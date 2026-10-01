@@ -1,0 +1,16 @@
+node_modules/
+dist/
+.tools/
+test-results/
+playwright-report/
+*.log
+rive/build/
+.venv/
+models/
+__pycache__/
+*.pyc
+.env
+.env.*
+!.env.example
+
+rive-follow/build/

@@ -1,0 +1,41 @@
+// All Milo-specific dimensions, asset paths and Rive property names live here.
+import animationUrl from "../assets/milo-basic.riv?url";
+export const miloBasic = {
+  id: "milo-basic",
+  label: "Milo · Rive",
+  src: animationUrl,
+  stateMachine: "ExpressionMachine",
+  expressions: {
+    neutral: 0,
+    happy: 1,
+    sad: 2,
+    curious: 3,
+    surprised: 4,
+    angry: 5,
+  },
+  fallbackExpression: "neutral",
+  visemes: {
+    REST: [35, 3],
+    A: [40, 35],
+    E: [48, 17],
+    I: [52, 9],
+    O: [26, 30],
+    U: [18, 20],
+    V: [20, 14],
+    M: [34, 2],
+  },
+  fallbackViseme: "REST",
+  smile: { neutral: 3, happy: 10, sad: -5, curious: 3, surprised: 3, angry: 3 },
+  bindings: {
+    emotion: { property: "emotion" },
+    intensity: { property: "intensity" },
+    gazeX: { property: "gazeX", scale: 9 },
+    gazeY: { property: "gazeY", scale: 6 },
+    headTilt: { property: "headTilt", scale: 0.18 },
+    breath: { property: "breath", scale: 2 },
+    eyeOpen: { property: "eyeOpen" },
+    mouthWidth: { property: "mouthWidth" },
+    mouthHeight: { property: "mouthHeight" },
+    mouthCurve: { property: "mouthCurve" },
+  },
+};

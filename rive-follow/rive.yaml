@@ -1,0 +1,8 @@
+name: rive-follow
+logs:
+  file: build/rive.log
+  problems: build/problems.log
+main: Follow
+push:
+  projectId: 635041
+  fileId: 2624622
