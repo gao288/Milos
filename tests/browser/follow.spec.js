@@ -134,3 +134,43 @@ test("Follow consumes continuous model packets and keeps emotional intent", asyn
   await page.evaluate(() => window.avatar.stop());
   expect(await page.evaluate(() => window.avatar.getFrame().performance)).toBeNull();
 });
+
+test("individual lip controls reach native geometry and release ownership to audio", async ({ page }) => {
+  await page.goto('/?character=follow');
+  await page.waitForFunction(() => window.avatar?.getState().ready);
+  await page.locator('#follow').uncheck();
+  await page.locator('#idle-motion').uncheck();
+  await page.locator('#auto-blink').uncheck();
+  await page.locator('#mouth-lab summary').click();
+  const set = async (channel, value) => {
+    await page.locator('#mouth-' + channel).fill(String(value));
+    await page.locator('#mouth-' + channel).dispatchEvent('input');
+    await page.waitForTimeout(120);
+  };
+  await set('jawOpen', .4);
+  await page.waitForTimeout(800);
+  const neutral = await page.locator('#avatar').screenshot();
+  await set('mouthUpperUpLeft', 1);
+  const upper = await page.locator('#avatar').screenshot({path:'test-results/follow-left-upper-lip.png'});
+  expect(upper.equals(neutral)).toBe(false);
+  const weights = await page.evaluate(() => window.avatar.getFrame().performance.weights);
+  expect(weights.mouthUpperUpLeft).toBe(1); expect(weights.mouthUpperUpRight).toBe(0);
+  await set('mouthClose', 1);
+  const closed = await page.locator('#avatar').screenshot({path:'test-results/follow-sealed-lips.png'});
+  expect(closed.equals(upper)).toBe(false);
+  await page.locator('#mouth-lab-reset').click();
+  expect(await page.evaluate(() => window.avatar.getFrame().performance)).toBeNull();
+  // A different source takes over. Resetting stale sliders must leave it intact.
+  await set('mouthPucker', .8);
+  await page.evaluate(() => {
+    const stream = window.avatar.performance.beginStream(() => 0);
+    stream.append([{timeMs:0,weights:{jawOpen:.7}}]);
+  });
+  await expect(page.locator('#mouth-lab-status')).toContainText('调节滑块');
+  await page.locator('#mouth-lab-reset').click();
+  expect(await page.evaluate(() => window.avatar.getFrame().performance.weights.jawOpen)).toBe(.7);
+  await page.evaluate(() => window.avatar.setCharacter('milo'));
+  await expect(page.locator('#mouth-lab')).toBeHidden();
+  await page.evaluate(() => window.avatar.setCharacter('follow'));
+  await expect(page.locator('#mouth-lab')).toBeVisible();
+});

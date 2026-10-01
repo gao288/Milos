@@ -13,7 +13,10 @@
 `rive-follow/` and `src/assets/follow-expressive.riv` are modified versions based on
 an editable copy supplied by the user (Rive file 2624622). Modifications add six
 expression states, parameterized mouth geometry, eyebrows, eyelids, cheek controls,
-and independent speech/gesture bindings. The original pose animations are retained.
+and independent speech/gesture bindings. A subsequent revision adds eight cubic
+lip controls driven by 27 mouth blendshape channels, jaw skinning on the original
+face/shadow contours, and separately clipped upper/lower teeth and tongue.
+The original pose animations are retained.
 The app supplies pointer coordinates from normalized motion events and maps model
 face channels to the added geometry. Modified artwork retains CC BY 4.0 attribution.
 No affiliation with or endorsement by the creator is implied.

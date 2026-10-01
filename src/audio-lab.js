@@ -21,7 +21,7 @@ export class AudioLab {
         <p class="helper">最长 60 秒；音频仅发往本机推理服务。先生成再播放，不是实时麦克风推理。</p>
         <div class="model-meter-grid">${watched.map((name) => `<div><span>${name}</span><meter id="model-${name}" min="0" max="1" value="0"></meter><output id="model-${name}-value">0.00</output></div>`).join("")}</div>
         <div class="control"><label for="model-upper-face">模型表情参与度 <output id="model-upper-face-value">0%</output></label><input id="model-upper-face" type="range" min="0" max="1" step="0.05" value="0"></div>
-        <p class="helper">默认由声音控制嘴部发音，JEV／右侧预设控制情绪。调高参与度可叠加模型预测的眉眼和嘴角动作。</p>
+        <p class="helper">默认由声音控制嘴部发音，JEV／右侧预设控制情绪。调高参与度可叠加模型预测的眉眼与脸颊动作；Follow 的嘴角始终跟随嘴部通道。</p>
         <p id="model-character-note" class="helper"></p>
         <details><summary>导入其他模型的曲线</summary><p class="helper">选择 arkit-52-v1 JSON；先加载对应音频，曲线时间以音频起点为零。</p><input id="model-json-file" type="file" accept="application/json,.json" aria-label="面部曲线 JSON"></details>
       </section>`);

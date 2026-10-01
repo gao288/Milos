@@ -251,8 +251,8 @@
                                             </Node>
                                             <Node name="Continuous speech" id="9:20188">
                                                 <DataBindContext sourcePathIds="1:5406-9:20009" propertyKey="18" id="9:20189" />
-                                                <Shape name="Upper teeth" x="0" y="-3" id="9:20190">
-                                                    <Ellipse width="46" height="12" originX="0.5" originY="0.5" id="9:20191">
+                                                <Shape name="Upper teeth" x="0" y="-4" id="9:20190">
+                                                    <Ellipse width="46" height="8" originX="0.5" originY="0.5" id="9:20191">
                                                         <DataBindContext sourcePathIds="1:5406-9:20070" propertyKey="20" id="9:20196" />
                                                     </Ellipse>
                                                     <Fill id="9:20192">
@@ -263,7 +263,7 @@
                                                     <ClippingShape sourceId="9:20210" id="9:20272" />
                                                 </Shape>
                                                 <Shape name="Lower teeth" x="0" y="9" id="9:20197">
-                                                    <Ellipse width="43" height="7" originX="0.5" originY="0.5" id="9:20198" />
+                                                    <Ellipse width="43" height="5" originX="0.5" originY="0.5" id="9:20198" />
                                                     <Fill id="9:20199">
                                                         <SolidColor colorValue="FFE4E4E4" id="9:20200" />
                                                     </Fill>

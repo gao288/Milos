@@ -123,8 +123,11 @@ npm run rive:export  # 写入 public/milo.rev，不上传到任何 Rive 项目
 - `Follow` 画板 / `State Machine 1` / `FollowFace` View Model。
 - 新增 neutral / happy / sad / curious / surprised / angry 六种原生状态，280ms 转换；
   `intensity` 在中性和目标状态之间混合。眉毛、眼睑、嘴部和脸颊一起变化。
-- 连续语音几何包含嘴腔、裁剪牙齿与舌头。独立 `restWeight / speechWeight` 混合情绪嘴和说话嘴。
-  `mouthWidth / mouthHeight` 是角色局部像素单位，模型输出由 `follow-signals.js` 映射。
+- 连续语音几何由八个三次 Bézier 控制点构成：两侧嘴角、上唇左／中／右、下唇左／中／右。
+  27 个嘴部通道直接映射到曲线位置与切线，不再合并成嘴宽／嘴高。
+  独立 `restWeight / speechWeight` 混合情绪嘴和说话嘴。
+- 下颌骨骼通过 Skin / CubicWeight 叠加在原有转头动画上，带动下巴轮廓和颈部阴影。
+  上牙固定，下牙与舌头随下颌运动；三个形状均裁剪到同一个嘴腔。
 - 支持十个框架面部微调参数、手动眨眼、头部倾斜、点头、微动作；保留原生眨眼动画，
   `nativeBlink=1` 可在 Editor 使用。网页设为 0，由框架统一管理自动／手动眨眼。
 - 支持现有中英文模型音频、连续参数流、文本与备用元音输入。模型与动画无需互相依赖，
@@ -145,8 +148,34 @@ bash scripts/rive-cli.sh push rive-follow --name="Follow expressions and continu
 
 `public/follow-expressive.rev` 可导入 Rive Editor，`.riv` 为网页运行文件。
 在 Editor 选 `Follow` 画板、运行状态机，通过 `FollowFace` 的 `emotion=0..5`、
-`intensity=0..1` 测试表情；嘴形测试设 `restWeight=0`、`speechWeight=1`，改变
-`mouthWidth`（约 25–75）和 `mouthHeight`（2–60），`teethVisible=0..1`。
+`intensity=0..1` 测试表情；嘴形测试设 `restWeight=0`、`speechWeight=1`。
+新版 Follow 用控制点替换了旧的内部 `mouthWidth / mouthHeight` 绑定，公共 AvatarFrame 协议保持不变：
+
+| 参数／通道 | 驱动部位 |
+| --- | --- |
+| `mouthUpperUpLeft/Right`, `mouthLowerDownLeft/Right` | 左右上下唇分别升降 |
+| `mouthSmile/Frown/Stretch/Dimple` + `Left/Right` | 两侧嘴角分别上提、下压、拉伸、收紧 |
+| `mouthRollUpper/Lower`, `mouthShrugUpper/Lower` | 上下唇分别内卷与上提 |
+| `mouthPucker`, `mouthFunnel` | 撅嘴收拢与漏斗形张开，独立计算 |
+| `mouthClose`, `mouthPressLeft/Right` | 双唇接触与单侧压紧，保留下颌姿态 |
+| `jawOpen/Left/Right/Forward`, `mouthLeft/Right` | 下颌、下牙及嘴部位置 |
+
+这些 0–1 语义通道通过 `follow-mouth.js` 映射为 Rive 的角色局部坐标。
+`cornerLeft/Right`、`upperLeft/Center/Right`、`lowerLeft/Center/Right` 各自暴露
+`X/Y/InRotation/InDistance/OutRotation/OutDistance`，可在 Editor 调整点和切线。
+`jawX/Y/Scale` 驱动原生下颌骨骼。无需新增模型或重新训练。
+
+网页展开 **「嘴部曲线实验 · 27 个独立通道」**，即可直接调节语义通道。
+调节会停止原语音并使用同一条 performance 协议；播放新音频会接管。
+测试清零按钮只结束自己的控制，不会打断后来开始的音频／参数流。
+
+曲线成对约束上下唇的位置，完整闭唇时两条边界重合。淡出采用 Bézier 控制向量插值，
+避免角度跨越 ±π 时翻折。400 组确定性极端输入及淡出测试检查曲线不交叉。
+原生状态机仍负责情绪，嘴部通道不受 `upperFaceWeight` 开关影响；该开关对 Follow 仅控制眉眼和脸颊。
+
+这是为黑白 2D 角色标定的形变映射，前伸用轻微投影缩放表达，不代表真实 3D 位移；
+左右沿用网页画面方向约定，接入其他捕捉系统时需确认镜像设置。
+模型输出中仍没有舌头通道，舌头位置随下颌推算；并非完整的牙齿／舌头发音模拟。
 
 ```js
 await window.avatar.setCharacter("follow");

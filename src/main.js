@@ -18,6 +18,7 @@ import { OrbAdapter } from "./adapters/orb.js";
 import { milo } from "./characters/milo.js";
 import { miloBasic } from "./characters/milo-basic.js";
 import { interactiveFollow } from "./characters/interactive-follow.js";
+import { MouthLab } from "./mouth-lab.js";
 import { AudioLab } from "./audio-lab.js";
 import { PerformanceTimeline } from "./framework/performance.js";
 const $ = (s) => document.querySelector(s);
@@ -137,6 +138,7 @@ let requestedCharacter = "milo";
 let loadAttempt = 0;
 let demoTimer = null;
 let audioLab = null;
+let mouthLab = null;
 const characters = new Map([
   ["follow", { name: "Interactive Follow", create: () => new RiveAdapter(interactiveFollow) }],
   ["milo", { name: "Milo", create: () => new RiveAdapter(milo) }],
@@ -287,6 +289,7 @@ async function setCharacter(id) {
     if (!committed) return false;
     character = id;
     audioLab?.setCharacter(id);
+    mouthLab?.setCharacter(id);
     const isFollow = id === "follow";
     $("#stage").classList.toggle("follow-stage", isFollow);
     $("#follow-info").classList.toggle("hidden", !isFollow);
@@ -388,6 +391,7 @@ audioLab = new AudioLab(runtime, {
   stopAll: () => stop(), stopLegacy: () => stop({ keepModel: true }),
   setBehavior, setSource,
 });
+mouthLab = new MouthLab(runtime, { stopAll: () => stop(), setSource });
 $("#character").onchange = (e) => {
   setCharacter(e.target.value).catch(() => {});
 };
@@ -660,6 +664,7 @@ function frame(now) {
   runtime.options.idleMotion = $("#idle-motion").checked;
   const renderedFrame = runtime.update(now);
   audioLab.update(renderedFrame);
+  mouthLab.update();
   $("#viseme-readout").textContent = renderedFrame.performance ? "CONTINUOUS" : viseme;
   $("#confidence").textContent =
     source === "microphone"
