@@ -82,18 +82,25 @@ test("Follow's native expressions and speech bindings work independently", async
   await page.waitForTimeout(500);
   const happy = await page.locator("#follow-probe").screenshot({ path: "test-results/follow-native-happy.png" });
   expect(happy.equals(neutral)).toBe(false);
-  expect(await page.evaluate(() => window.followProbe.rive.viewModelInstance.number("mouthHeight").value)).toBe(4);
+  expect(await page.evaluate(() => window.followProbe.rive.viewModelInstance.number("lowerCenterY").value)).toBe(2);
   await page.evaluate(() => {
     const vm = window.followProbe.rive.viewModelInstance;
-    for (const [key, value] of Object.entries({ restWeight: 0, speechWeight: 1, mouthHeight: 46, mouthWidth: 56, teethVisible: 1 })) vm.number(key).value = value;
+    for (const [key, value] of Object.entries({ restWeight: 0, speechWeight: 1, lowerCenterY: 36, lowerLeftY: 30, lowerRightY: 30, teethVisible: 1 })) vm.number(key).value = value;
   });
   await page.waitForTimeout(100);
   const opened = await page.locator("#follow-probe").screenshot({ path: "test-results/follow-native-speech.png" });
   expect(opened.equals(happy)).toBe(false);
-  await page.evaluate(() => window.followProbe.rive.viewModelInstance.number("mouthHeight").value = 2);
+  await page.evaluate(() => {
+    const vm = window.followProbe.rive.viewModelInstance;
+    for (const name of ["lowerCenterY", "lowerLeftY", "lowerRightY"]) vm.number(name).value = -2;
+  });
   await page.waitForTimeout(100);
   expect(opened.equals(await page.locator("#follow-probe").screenshot())).toBe(false);
   expect(await page.evaluate(() => window.followProbe.rive.viewModelInstance.number("emotion").value)).toBe(1);
+  const jawRest = await page.locator("#follow-probe").screenshot();
+  await page.evaluate(() => window.followProbe.rive.viewModelInstance.number("jawY").value = 15);
+  await page.waitForTimeout(100);
+  expect(jawRest.equals(await page.locator("#follow-probe").screenshot())).toBe(false);
   await page.evaluate(() => { window.followProbe.dispose(); document.querySelector("#follow-probe").remove(); });
 });
 

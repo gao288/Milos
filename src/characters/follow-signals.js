@@ -1,4 +1,4 @@
-import { performanceMouth } from "../framework/performance.js";
+import { solveFollowMouth, blendMouth } from "./follow-mouth.js";
 
 // Follow-specific geometry only. Inputs are the renderer-independent AvatarFrame.
 export const FOLLOW_VISEMES = {
@@ -19,9 +19,9 @@ export function solveFollowFrame(frame) {
   else { [width, height] = FOLLOW_VISEMES.REST; }
   const jaw = f.jawOpen ?? 0;
   const manualSpeech = clamp(jaw * 4, 0, 1);
+  let mouthGeometry = solveFollowMouth({ jawOpen: clamp((height - 4) / 34 + jaw, 0, 1), mouthPucker: clamp((56 - width) / 29, 0, 1), mouthStretchLeft: clamp((width - 56) / 24, 0, 1), mouthStretchRight: clamp((width - 56) / 24, 0, 1) });
   const signals = {
     nativeBlink: 0, // The framework owns auto/manual blinks in the web app.
-    mouthWidth: width, mouthHeight: clamp(height + jaw * 40, 2, 60),
     restWeight: rest * (1 - manualSpeech), speechWeight: 1 - rest * (1 - manualSpeech),
     browRaiseLeft: -(f.browRaiseLeft ?? 0) * 18,
     browRaiseRight: -(f.browRaiseRight ?? 0) * 18,
@@ -33,10 +33,11 @@ export function solveFollowFrame(frame) {
     noseWrinkle: f.noseWrinkle ?? 0,
   };
   if (frame.performance) {
-    const p = frame.performance, b = p.weights, m = performanceMouth(b);
+    const p = frame.performance, b = p.weights;
     const mix = p.weight, upper = mix * (p.upperFaceWeight ?? 0);
-    signals.mouthWidth += (56 * m.width - signals.mouthWidth) * mix;
-    signals.mouthHeight += (clamp(2 + m.open * 56 + jaw * 20, 2, 60) - signals.mouthHeight) * mix;
+    mouthGeometry = blendMouth(mouthGeometry, solveFollowMouth({
+      ...b, jawOpen: clamp((b.jawOpen ?? 0) + jaw * .5, 0, 1),
+    }), mix);
     signals.restWeight *= 1 - mix;
     signals.speechWeight = 1 - signals.restWeight;
     signals.browRaiseLeft -= ((b.browInnerUp ?? 0) + (b.browOuterUpLeft ?? 0)) * 14 * upper;
@@ -46,8 +47,8 @@ export function solveFollowFrame(frame) {
     signals.leftEyeScale += (b.eyeWideLeft ?? 0) * .4 * upper;
     signals.rightEyeScale += (b.eyeWideRight ?? 0) * .4 * upper;
     signals.cheekRaise -= ((b.cheekSquintLeft ?? 0) + (b.cheekSquintRight ?? 0)) * 4 * upper;
-    signals.mouthLift -= m.smile * 6 * upper;
+    // Mouth channels always own articulation; upperFaceWeight only gates brows/eyes/cheeks.
   }
-  signals.teethVisible = clamp((signals.mouthHeight - 9) / 15, 0, 1);
+  Object.assign(signals, mouthGeometry);
   return signals;
 }

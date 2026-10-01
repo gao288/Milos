@@ -3,6 +3,8 @@ The pristine imported source is kept separately so rebuilding is deterministic.
 """
 from pathlib import Path
 import math
+import json
+import subprocess
 import xml.etree.ElementTree as E
 
 project = Path(__file__).resolve().parents[1] / 'rive-follow'
@@ -48,9 +50,14 @@ def path(parent,name,points,closed=False,color=None,thickness=6):
 vm=find('1:5406');vm.set('name','FollowFace')
 instance=find('1:5407');instance.set('name','Default')
 defaults=dict(emotion=0,intensity=.8,eyeOpen=1,leftEyeScale=1,rightEyeScale=1,
-    browRaiseLeft=0,browRaiseRight=0,mouthWidth=58,mouthHeight=4,
+    browRaiseLeft=0,browRaiseRight=0,
     restWeight=1,speechWeight=0,mouthLift=0,mouthStretch=1,cheekRaise=0,
     noseWrinkle=0,headTilt=0,breath=0,teethVisible=0,nativeBlink=1)
+mouth_contract=json.loads(subprocess.check_output([
+    'node','--input-type=module','-e',
+    "import { FOLLOW_MOUTH_DEFAULTS, LIP_POINTS } from './src/characters/follow-mouth.js'; console.log(JSON.stringify({defaults:FOLLOW_MOUTH_DEFAULTS,points:LIP_POINTS}));"
+],cwd=project.parent,text=True))
+defaults.update(mouth_contract['defaults'])
 props={name:el(vm,'ViewModelPropertyNumber',name=name).get('id') for name in defaults}
 for name,value in defaults.items():el(instance,'ViewModelInstanceNumber',viewModelPropertyId=props[name],propertyValue=value)
 ab=find('1:5394');ab.set('name','Follow');ab.set('includeInExport','true')
@@ -88,12 +95,23 @@ rest_open.set('opacity','0')
 el(rest_teeth,'ClippingShape',sourceId=rest_open.get('id'))
 # Front-to-back order follows the imported file: teeth before cavity.
 speech=el(overlay,'Node',name='Continuous speech');bind(speech,'speechWeight',18)
-teeth,tg=ellipse(speech,'Upper teeth',0,-12,45,17,'FFFFFFFF');bind(teeth,'teethVisible',18)
-tongue,_=ellipse(speech,'Tongue',0,18,31,15,'FF858585')
-cavity,geo=ellipse(speech,'Speech aperture',0,0,58,4,'FF111111')
-bind(geo,'mouthWidth',20);bind(geo,'mouthHeight',21)
-for shape in [teeth,tongue]:el(shape,'ClippingShape',sourceId=cavity.get('id'))
-# Ellipse dimensions are bound directly, avoiding stretched outlines.
+teeth,tg=ellipse(speech,'Upper teeth',0,-3,46,12,'FFFFFFFF')
+bind(teeth,'teethVisible',18);bind(teeth,'teethX',13);bind(tg,'teethWidth',20)
+lower_teeth,ltg=ellipse(speech,'Lower teeth',0,9,43,7,'FFE4E4E4')
+bind(lower_teeth,'teethVisible',18);bind(lower_teeth,'lowerTeethX',13);bind(lower_teeth,'lowerTeethY',14)
+tongue,_=ellipse(speech,'Tongue',0,12,30,14,'FF858585')
+bind(tongue,'tongueX',13);bind(tongue,'tongueY',14)
+cavity=el(speech,'Shape',name='Articulated lip contour')
+contour=el(cavity,'PointsPath',name='Eight lip control points',isClosed='true')
+for prefix in mouth_contract['points']:
+    attrs={name:defaults[prefix+suffix] for name,suffix in [
+        ('x','X'),('y','Y'),('inRotation','InRotation'),('inDistance','InDistance'),
+        ('outRotation','OutRotation'),('outDistance','OutDistance')]}
+    vertex=el(contour,'CubicDetachedVertex',name=prefix,**attrs)
+    for suffix,property_key in [('X',24),('Y',25),('InRotation',84),('InDistance',85),('OutRotation',86),('OutDistance',87)]:
+        bind(vertex,prefix+suffix,property_key)
+fill(cavity,'FF111111');stroke(cavity,3)
+for shape in [teeth,lower_teeth,tongue]:el(shape,'ClippingShape',sourceId=cavity.get('id'))
 
 brows=[];eye_poses=[];cheeks=[]
 for index,(eye_id,x) in enumerate([('1:5477',-47.596497),('1:5480',50.093506)]):
@@ -123,6 +141,24 @@ path(nose,'Nose crease',[(-6,-1),(0,-4),(6,-1)],thickness=2)
 # Dedicated wrapper lets gestures coexist with original IK and head animations.
 head=find('1:5612');parent=find('1:11986');parent.remove(head)
 head_overlay=el(parent,'Node',name='JEV head gesture');bind(head_overlay,'headTilt',15);bind(head_overlay,'breath',14);head_overlay.append(head)
+
+# Skin the existing jaw contour and its neck shadow. Original turn animations
+# still animate these vertices; two bones add jaw movement on top of that pose.
+# The bind matrices use path-local coordinates. Both bones inherit the shape's
+# current world transform, so the original IK/turn/gesture transforms remain live.
+for shape_id in ['1:5516','1:11821']:
+    shape=find(shape_id);face_path=shape.find('PointsPath')
+    face_vertices=list(face_path)
+    fixed=el(shape,'RootBone',name='Fixed upper face',length=35)
+    pivot=el(shape,'Node',name='Mandible pivot',x=49.344177,y=100)
+    jaw_bone=el(pivot,'RootBone',name='Continuous jaw',length=60)
+    bind(jaw_bone,'jawX',90);bind(jaw_bone,'jawY',91);bind(jaw_bone,'jawScale',16)
+    skin=el(face_path,'Skin',name='Additive jaw deformation')
+    el(skin,'Tendon',boneId=fixed.get('id'))
+    el(skin,'Tendon',boneId=jaw_bone.get('id'),tx=49.344177,ty=100)
+    for vertex,amount in zip(face_vertices,[0,.1,.6,1,.85,.2,0,0]):
+        moving=round(amount*255);packed=(255-moving)+(moving<<8)
+        el(vertex,'CubicWeight',values=packed,indices=513,inValues=packed,inIndices=513,outValues=packed,outIndices=513)
 
 names=['neutral','happy','sad','curious','surprised','angry']
 layer=el(sm,'StateMachineLayer',name='Expressions · JEV')
