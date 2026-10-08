@@ -89,8 +89,8 @@ for id,frames in [('1:9707',[(1,30),(11,0)]),('1:8533',[(0,0),(10,30)])]:key(fin
 overlay=el(anchor,'Node',name='JEV mouth overlay');bind(overlay,'mouthLift',14);bind(overlay,'mouthStretch',16)
 rest=el(overlay,'Node',name='Emotional mouth');bind(rest,'restWeight',18)
 rest_line,vertices=path(rest,'Rest lip contour',[(-28,0),(0,7),(28,0)],thickness=7)
-rest_teeth,_=ellipse(rest,'Emotional teeth',0,1,60,13,'FFFFFFFF')
-rest_open,rest_vertices=path(rest,'Emotional aperture',[(-28,0),(0,3),(28,0),(0,20)],closed=True,color='FF111111',thickness=0)
+rest_teeth,rest_teeth_geometry=ellipse(rest,'Emotional teeth',0,1,60,13,'FFFFFFFF')
+rest_open,rest_vertices=path(rest,'Emotional aperture',[(-28,0),(-20,-4),(0,-5),(20,-4),(28,0),(20,14),(0,20),(-20,14)],closed=True,color='FF111111',thickness=3)
 rest_open.set('opacity','0')
 el(rest_teeth,'ClippingShape',sourceId=rest_open.get('id'))
 # Front-to-back order follows the imported file: teeth before cavity.
@@ -113,10 +113,16 @@ for prefix in mouth_contract['points']:
 fill(cavity,'FF111111');stroke(cavity,3)
 for shape in [teeth,lower_teeth,tongue]:el(shape,'ClippingShape',sourceId=cavity.get('id'))
 
-brows=[];eye_poses=[];cheeks=[]
+brows=[];eye_poses=[];cheeks=[];eye_rigs=[];brow_vertices=[]
 for index,(eye_id,x) in enumerate([('1:5477',-47.596497),('1:5480',50.093506)]):
     side='Left' if index==0 else 'Right'
     eye=find(eye_id);face.remove(eye)
+    # A grouping node preserves the original animated transform/IDs, with the
+    # highlight drawn in front of its pupil fill rather than behind that shape.
+    ink_children=list(eye);eye.tag='Node'
+    for child in ink_children:eye.remove(child)
+    pupil_ink=el(eye,'Shape',name=side+' pupil ink')
+    for child in ink_children:pupil_ink.append(child)
     origin=el(face,'Node',name=side+' eye anchor',x=x,y=-20.958832)
     pose=el(origin,'Node',name=side+' emotional eyelid');eye_poses.append(pose)
     manual=el(pose,'Node',name=side+' manual eyelid');bind(manual,'leftEyeScale' if index==0 else 'rightEyeScale',17)
@@ -127,10 +133,25 @@ for index,(eye_id,x) in enumerate([('1:5477',-47.596497),('1:5480',50.093506)]):
             offset=x if kp.get('propertyKey')=='13' else -20.958832 if kp.get('propertyKey')=='14' else None
             if offset is not None:
                 for k in kp.findall('KeyFrameDouble'):k.set('value',str(float(k.get('value','0'))-offset))
+    # Actual eyelids, not scaled pupil dots. The invisible aperture clips the
+    # original gaze-animated pupil, while both lids deform independently.
+    pupil_pose=el(blink,'Node',name=side+' pupil expression')
+    blink.remove(eye);pupil_pose.append(eye)
+    upper,uv=path(blink,side+' upper eyelid',[(-29,0),(0,-3),(29,0)],thickness=6)
+    lower,lv=path(blink,side+' lower eyelid',[(-27,14),(0,21),(27,14)],thickness=4)
+    aperture,av=path(blink,side+' eye opening',[(-33,0),(0,-3),(33,0),(33,30),(0,34),(-33,30)],closed=True,color='FFFFFFFF',thickness=0)
+    el(pupil_ink,'ClippingShape',sourceId=aperture.get('id'),isVisible='false')
+    # Preserve the face silhouette at extreme turns.
+    for lid in [upper,lower]:el(lid,'ClippingShape',sourceId='1:5516')
+    glint,_=ellipse(eye,side+' pupil highlight',-2,-3,5,5,'FFFFFFFF')
+    eye.remove(glint);eye.insert(0,glint)
+    el(glint,'ClippingShape',sourceId=aperture.get('id'),isVisible='false')
+    eye_rigs.append((pupil_pose,upper,uv,lower,lv,av,glint))
     brow_origin=el(face,'Node',name=side+' brow anchor',x=x,y=-80)
     brow=el(brow_origin,'Node',name=side+' emotional brow');brows.append(brow)
     manual_brow=el(brow,'Node',name=side+' JEV brow');bind(manual_brow,'browRaise'+side,14)
-    path(manual_brow,side+' eyebrow',[(-16,2),(0,-3),(16,1)],thickness=6)
+    _,bv=path(manual_brow,side+' eyebrow',[(-21,2),(0,-5),(21,1)],thickness=7)
+    brow_vertices.append(bv)
     cheek=el(face,'Node',name=side+' cheek',x=x,y=49)
     manual_cheek=el(cheek,'Node',name='Cheek lift');bind(manual_cheek,'cheekRaise',14)
     s,_=path(manual_cheek,'Smile crease',[(-10,0),(0,3),(9,1)],thickness=3)
@@ -140,7 +161,8 @@ nose=el(face,'Node',name='Nose tension',x=3,y=19);bind(nose,'noseWrinkle',18)
 path(nose,'Nose crease',[(-6,-1),(0,-4),(6,-1)],thickness=2)
 # Dedicated wrapper lets gestures coexist with original IK and head animations.
 head=find('1:5612');parent=find('1:11986');parent.remove(head)
-head_overlay=el(parent,'Node',name='JEV head gesture');bind(head_overlay,'headTilt',15);bind(head_overlay,'breath',14);head_overlay.append(head)
+head_overlay=el(parent,'Node',name='JEV head gesture');bind(head_overlay,'headTilt',15);bind(head_overlay,'breath',14);
+expression_head=el(head_overlay,'Node',name='Expression head posture');expression_head.append(head)
 
 # Skin the existing jaw contour and its neck shadow. Original turn animations
 # still animate these vertices; two bones add jaw movement on top of that pose.
@@ -160,46 +182,92 @@ for shape_id in ['1:5516','1:11821']:
         moving=round(amount*255);packed=(255-moving)+(moving<<8)
         el(vertex,'CubicWeight',values=packed,indices=513,inValues=packed,inIndices=513,outValues=packed,outIndices=513)
 
-names=['neutral','happy','sad','curious','surprised','angry']
+# Seven semantic states; intensity follows authored intermediate poses instead
+# of merely scaling one drawing. Values 0..5 retain the original public indices.
+names=['neutral','happy','sad','curious','surprised','angry','fear']
 layer=el(sm,'StateMachineLayer',name='Expressions · JEV')
 el(layer,'AnyState',x=-300,y=-200);el(layer,'ExitState',x=800,y=-200)
 entry=el(layer,'EntryState',x=-250,y=0)
 states={};anims={}
+# w, curve, opening, brow Y L/R, brow rotation L/R, top Y L/R,
+# lid arch L/R (negative=crescent), pupil size L/R, pupil Y, lower tension,
+# cheek, head roll, head Y. All coordinates are local authored geometry.
+poses={
+ 'neutral': (56,7,0, 0,0,0,0, -4,-6,-2,-2, 1,1,4,0,0,0,0),
+ 'warm': (65,15,0, -6,-6,-.08,.08, 5,5,-12,-12, 0,0,0,0,.6,-.035,0),
+ 'happy': (78,17,42, -14,-14,-.10,.10, 4,4,-19,-19, 0,0,0,0,1,.025,-7),
+ 'empathy': (50,5,0, -4,-4,-.38,.38, -1,-1,3,3, .95,.95,7,.45,0,-.03,3),
+ 'sad': (50,-13,0, -5,-5,-.53,.53, 5,5,5,5, .8,.8,12,.6,0,-.055,9),
+ 'curious': (27,0,13, -19,5,-.18,-.14, -28,1,-3,-2, 1.25,.8,2,.1,0,.06,0),
+ 'surprise': (27,0,28, -20,-20,-.12,.12, -29,-29,-7,-7, .68,.68,0,.15,0,0,-4),
+ 'surprised': (54,12,33, -18,-18,-.10,.10, -29,-29,-9,-9, 1.8,1.8,0,.15,.4,.035,-6),
+ 'annoyed': (48,-4,0, 4,4,.22,-.22, 1,1,-1,-1, .9,.9,6,.12,0,.025,1),
+ 'angry': (68,-8,24, -3,-3,.48,-.48, -2,-2,0,0, .85,.85,5,.7,.4,0,5),
+ 'uneasy': (48,-7,0, -9,-6,-.42,.3, -19,-15,-3,-3, .8,.8,2,.8,0,-.035,-2),
+ 'fear': (73,-8,37, -16,-16,-.52,.52, -33,-33,-7,-7, .48,.48,0,1,0,-.02,-9),
+}
+for name in poses:
+    anims[name]=el(ab,'LinearAnimation',name='Expression · '+name,duration=60,fps=60)
+midpoints={'happy':'warm','sad':'empathy','surprised':'surprise','angry':'annoyed','fear':'uneasy'}
 for i,name in enumerate(names):
     state=el(layer,'BlendState1DViewModel',x=(i%3)*260,y=(i//3)*240)
     bp=el(state,'BindablePropertyNumber');bind(bp,'intensity',636)
-    states[name]=state;anims[name]=el(ab,'LinearAnimation',name='Expression · '+name,duration=60,fps=60)
-for name,state in states.items():
+    states[name]=state
     el(state,'BlendAnimation1D',animationId=anims['neutral'].get('id'),value=0)
+    if name in midpoints:el(state,'BlendAnimation1D',animationId=anims[midpoints[name]].get('id'),value=.5)
     el(state,'BlendAnimation1D',animationId=anims[name].get('id'),value=1)
+for name,state in states.items():
     for i,other in enumerate(names):
         if name==other:continue
-        t=el(state,'BlendStateTransition',stateToId=states[other].get('id'),duration=280)
+        t=el(state,'BlendStateTransition',stateToId=states[other].get('id'),duration=320)
         cond=el(t,'TransitionViewModelCondition',opValue='equal')
         comp=el(cond,'TransitionPropertyViewModelComparator')
         bp=el(comp,'BindablePropertyNumber');bind(bp,'emotion',636)
         el(cond,'TransitionValueNumberComparator',value=i)
 el(entry,'StateTransition',stateToId=states['neutral'].get('id'))
-# Mouth curvature, aperture, asymmetric brows and eyelids form each native pose.
-#           width curve opening browL/R rotations eyeL/R cheek
-poses=[(56,7,0,0,0,0,0,1,1,0),
-       (68,13,20,-5,-5,-.08,.08,.65,.65,.8),
-       (48,-8,0,-3,-3,-.32,.32,.8,.8,0),
-       (45,3,0,-13,1,-.2,-.13,1.15,.65,0),
-       (32,0,38,-16,-16,-.1,.1,1.5,1.5,0),
-       (56,-5,0,5,5,.33,-.33,.58,.58,.2)]
-for name,pose in zip(names,poses):
-    a=anims[name];w,curve,opening,bl,br,rl,rr,le,re,cheek=pose
-    for vertex,x,y in zip(vertices,[-w/2,0,w/2],[0,curve,0]):static(a,vertex,24,x);static(a,vertex,25,y)
+
+def pose_path(a,vs,points,closed=False):
+    # Animate handles together with vertices so every intensity stays smooth.
+    for i,(v,(x,y)) in enumerate(zip(vs,points)):
+        prev=points[(i-1)%len(points)] if closed or i else points[i]
+        nxt=points[(i+1)%len(points)] if closed or i+1<len(points) else points[i]
+        dx=(nxt[0]-prev[0])/6;dy=(nxt[1]-prev[1])/6
+        for prop,val in [(24,x),(25,y),(84,math.atan2(-dy,-dx)),(85,math.hypot(dx,dy)),(86,math.atan2(dy,dx)),(87,math.hypot(dx,dy))]:static(a,v,prop,val)
+
+for name,pose in poses.items():
+    a=anims[name]
+    w,curve,opening,bl,br,rl,rr,tl,tr,al,ar,pl,pr,py,tension,cheek,roll,hy=pose
+    pose_path(a,vertices,[(-w/2,0),(0,curve),(w/2,0)])
     static(a,rest_line,18,0 if opening else 1)
     static(a,rest_open,18,1 if opening else 0)
-    static(a,rest_teeth,18,1 if name=='happy' else 0)
-    aperture_points=[(-w/2,0),(0,3),(w/2,0),(0,opening)] if name=='happy' else [(-w/2,0),(0,-opening/2),(w/2,0),(0,opening/2)]
-    for v,(x,y) in zip(rest_vertices,aperture_points):static(a,v,24,x);static(a,v,25,y)
-    for b,y,rot in zip(brows,[bl,br],[rl,rr]):static(a,b,14,y);static(a,b,15,rot)
-    for eye,scale in zip(eye_poses,[le,re]):static(a,eye,17,scale)
+    static(a,rest_teeth,18,1 if name in ['happy','surprised','angry','fear'] else 0)
+    static(a,rest_teeth,14,-3 if name in ['fear','angry'] else 1)
+    static(a,rest_teeth_geometry,21,7 if name in ['fear','angry'] else 13)
+    static(a,rest_teeth_geometry,20,w*.82)
+    if name in ['happy','surprised']:
+        aperture_points=[(-w/2,0),(-w*.3,3),(0,4),(w*.3,3),(w/2,0),(w*.3,opening*.7),(0,opening),(-w*.3,opening*.7)]
+    elif name in ['fear','angry']:
+        aperture_points=[(-w/2,8),(-w*.35,-opening*.35),(0,-opening*.5),(w*.35,-opening*.35),(w/2,8),(w*.35,opening*.4),(0,opening*.22),(-w*.35,opening*.4)]
+    else:
+        aperture_points=[(-w/2,0),(-w*.35,-opening*.4),(0,-opening/2),(w*.35,-opening*.4),(w/2,0),(w*.35,opening*.4),(0,opening/2),(-w*.35,opening*.4)]
+    pose_path(a,rest_vertices,aperture_points,True)
+    for b,bv,y,rot in zip(brows,brow_vertices,[bl,br],[rl,rr]):
+        static(a,b,14,y);static(a,b,15,rot)
+        pose_path(a,bv,[(-21,2),(0,-6 if name not in ['angry','fear'] else -2),(21,1)])
+    for eye in eye_poses:static(a,eye,17,1)
+    for index,(rig,top,arch,pupil) in enumerate(zip(eye_rigs,[tl,tr],[al,ar],[pl,pr])):
+        pp,upper,uv,lower,lv,av,glint=rig
+        slant=(10 if index==0 else -10) if name=='angry' else 0
+        static(a,glint,18,1 if name=='surprised' else 0)
+        static(a,pp,16,max(.01,pupil));static(a,pp,17,max(.01,pupil));static(a,pp,18,1 if pupil else 0);static(a,pp,14,py)
+        pose_path(a,uv,[(-29,top-slant),(0,top+arch),(29,top+slant)])
+        static(a,upper,18,1 if top>-20 or name=='fear' else .25)
+        pose_path(a,lv,[(-26,19),(0,23-7*tension),(26,19)])
+        static(a,lower,18,tension)
+        pose_path(a,av,[(-36,top-slant),(0,top+arch),(36,top+slant),(36,36),(0,39),(-36,36)],True)
     for c in cheeks:static(a,c,18,cheek)
+    static(a,expression_head,15,roll);static(a,expression_head,14,hy)
 
 E.indent(r,space='    ')
 E.ElementTree(r).write(project/'scene.rml',encoding='unicode')
-print(f'Follow: {len(props)} numeric properties, 6 native expressions, continuous speech geometry')
+print(f'Follow: {len(props)} numeric properties, 7 native expressions / 12 authored poses, continuous speech geometry')

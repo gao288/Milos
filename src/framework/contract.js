@@ -7,6 +7,7 @@ export const DEFAULT_CONTRACT = Object.freeze({
     "curious",
     "surprised",
     "angry",
+    "fear",
   ]),
   behaviors: Object.freeze(["idle", "listening", "speaking"]),
   visemes: Object.freeze(["REST", "A", "E", "I", "O", "U", "V", "M"]),

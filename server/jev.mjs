@@ -3,10 +3,11 @@ export const JEV_MODEL = "jev-1.13.0";
 export const emotions = {
   neutral: "Matter-of-fact information, routine politeness, or no clear emotional delivery",
   happy: "Pleasure, celebration, delight or upbeat encouragement. Warmth alone during grief or distress is not happiness",
-  sad: "Sadness, compassionate concern, sympathy or gentle consolation for distress, loss or disappointment. Includes quiet empathy without crying or saying 'I am sad'",
+  sad: "Sadness, compassionate concern, sympathy or gentle consolation for distress, loss or disappointment. Includes quiet empathy without crying or saying 'I am sad'. The speaker expressing their own fright or apprehension belongs to fear, not sad",
   curious: "Interested, wondering or thoughtfully asking",
   surprised: "Amazed or surprised",
   angry: "Clearly angry or indignant; not merely discussing an angry person",
+  fear: "The speaker's own unease, apprehension, alarm, being scared or fear; includes nervous first-person delivery such as 'I am scared, please stay with me'. Do not choose fear just because the topic is dangerous; calm safety advice is neutral and compassionate reassurance is sad",
 };
 
 export function emotionRequest({ text, currentText = text, context = [] }, model = JEV_MODEL) {

@@ -174,3 +174,30 @@ test("individual lip controls reach native geometry and release ownership to aud
   await page.evaluate(() => window.avatar.setCharacter('follow'));
   await expect(page.locator('#mouth-lab')).toBeVisible();
 });
+
+test('V2 fear reaches native rendering and Classic swaps preserve continuous articulation', async ({page}) => {
+  const errors=[];page.on('pageerror',e=>errors.push(e.message));
+  await page.goto('/?character=follow');
+  await page.waitForFunction(()=>window.avatar?.getState().ready);
+  for(const id of ['auto-blink','idle-motion','follow']) await page.locator('#'+id).uncheck();
+  await expect(page.locator('[data-preset]')).toHaveCount(12);
+  await page.locator('[data-preset="uneasy"]').click();
+  await page.waitForTimeout(850);
+  const uneasy=await page.locator('#avatar').screenshot();
+  await page.locator('[data-preset="terrified"]').click();
+  await page.waitForTimeout(850);
+  const fear=await page.locator('#avatar').screenshot({path:'test-results/follow-v2-fear.png'});
+  expect(uneasy.equals(fear)).toBe(false);
+  expect(await page.evaluate(()=>window.avatar.getFrame().expression.state)).toBe('fear');
+  expect(await page.evaluate(()=>window.avatar.getState().face.jawOpen)).toBe(0);
+  await page.evaluate(()=>window.avatar.performance.beginStream(()=>0).append([{timeMs:0,weights:{jawOpen:.7,mouthUpperUpLeft:.8}}]));
+  for(const id of ['follow-classic','follow']) {
+    await page.selectOption('#character',id);
+    await expect.poll(()=>page.evaluate(()=>window.avatar.getState().character)).toBe(id);
+    const frame=await page.evaluate(()=>window.avatar.getFrame());
+    expect(frame.expression.state).toBe('fear');
+    expect(frame.performance.weights.jawOpen).toBe(.7);
+    await expect(page.locator('#loading')).toBeHidden();
+  }
+  expect(errors).toEqual([]);
+});

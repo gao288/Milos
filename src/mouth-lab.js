@@ -39,7 +39,7 @@ export class MouthLab {
       this.source = null; this.update();
     };
   }
-  setCharacter(id) { this.root.classList.toggle('hidden', id !== 'follow'); }
+  setCharacter(id) { this.root.classList.toggle('hidden', !['follow', 'follow-classic'].includes(id)); }
   update() {
     const text = this.source && this.runtime.performanceSource === this.source
       ? '正在手动控制嘴部' : '调节滑块开始测试';

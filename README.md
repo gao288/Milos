@@ -30,12 +30,12 @@ tailscale serve --bg --https=7443 http://127.0.0.1:5173
 使用命令返回的 HTTPS 链接，浏览器提示时允许麦克风。语音 WebSocket 自动使用同一入口的 WSS。
 
 - GPT-Live：默认 `gpt-live-1` / `meridian`（男声），双向 16 kHz PCM16；可用 `GPT_LIVE_MODEL` / `GPT_LIVE_VOICE` 配置。会话开始前不上传麦克风数据，结束时释放麦克风、音频队列及动画，并等待服务端关闭确认。
-- JEV：官方 `POST https://api.typesafe.ai/v1/systemone`，固定 `jev-1.13.0`（可用 `JEV_MODEL` 配置）。一次请求同时判断六种情绪、强度、头部倾斜和有意的点头/摇头。`score / 4` 才是强度，confidence 单独用于抑制低置信度切换。
+- JEV：官方 `POST https://api.typesafe.ai/v1/systemone`，固定 `jev-1.13.0`（可用 `JEV_MODEL` 配置）。一次请求同时判断七种情绪（含 fear）、强度、头部倾斜和有意的点头/摇头。`score / 4` 才是强度，confidence 单独用于抑制低置信度切换。
 - 头部倾斜是文本语义对应的动作建议，不是从音频学习得到的真实姿态预测。JEV 的倾斜建议限制在 ±0.3，置信度至少 0.5 才使用；以 1.8 秒临时叠加层平滑进入/退出，不覆盖手动滑块。点头/摇头要求置信度至少 0.65，间隔至少 6 秒。
 - 静音嘴形：在实际播放时钟上计算 20ms 音量包络，使用开启/关闭双阈值（RMS 0.008/0.004）、短暂停顿保持和约 140ms 收口。低于阈值的音频不会让静息嘴形反复切换到说话曲线；纯静音窗口也跳过嘴形推理。很轻的耳语可能被阈值过滤，仍需不同声音的实机调参。
 - 自然待机动作由本地 `NaturalMotion` 生成，不调用 JEV：随机间隔转头、歪头、停留、回正，加上呼吸和眨眼；说话和聆听时动作较小，鼠标跟随时暂让出自主视线。可通过「自然待机动作」开关关闭。
 - 每 500ms 检查新增回复文本；分类时带上同一话语最近 8 秒的文本，并将零碎字幕合并为最多 12 个对话片段保留上下文。新增片段单独标记，仍只按新增片段的时间调度，不重播旧表情；遇到用户新一轮发言或较长停顿就切开语义窗口。最多一个 JEV 请求在途，没有新增文本时不重复收费调用。慢请求会降低实际更新频率；超时、失败或过期结果不会阻塞声音，失败后退避两秒。
-- JEV 将安慰、同情和关切映射为 `sad`，不把单纯温柔视为开心，也不要求助手声称自己很悲伤。表情应用后至少保留 1.2 秒（新的有效情绪仍可覆盖），避免短字幕片段让表情一闪即逝。语音面板的「JEV 实时输出」直接显示六种候选表情、最新判定、强度/置信度、头部倾斜、动作和推理耗时，并单独显示语音最近应用的表情。展开可查看完整输出 JSON（`answers` 保留四个问题的 JEV 原始答案）和判断文本；低置信度结果也会显示，但不强制应用。仅保留内存中的最新结果，新会话会清空。
+- JEV 将安慰、同情和关切映射为 `sad`，不把单纯温柔视为开心，也不要求助手声称自己很悲伤。表情应用后至少保留 1.2 秒（新的有效情绪仍可覆盖），避免短字幕片段让表情一闪即逝。语音面板的「JEV 实时输出」直接显示七种候选表情、最新判定、强度/置信度、头部倾斜、动作和推理耗时，并单独显示语音最近应用的表情。展开可查看完整输出 JSON（`answers` 保留四个问题的 JEV 原始答案）和判断文本；低置信度结果也会显示，但不强制应用。仅保留内存中的最新结果，新会话会清空。
 - 播放缓冲默认 **800ms**，可在连接前调为 200–1500ms。字幕和情绪保留 GPT-Live 的 `start_ms/end_ms`，以 AudioContext 时钟调度；嘴形按实际 PCM 样本对应的播放位置调度。音频与嘴形映射不依赖请求返回先后。
 - **同步限制：** 官方文本时间戳仅为近似片段时间；输出音频没有时间戳，也没有 audio-done 事件。当前以收到 session.started 时的音频时钟估算会话起点，不能消除传输延迟与服务端时钟偏差，不能保证逐字同步。已验证片段级联动，仍需逐字测量与设备校准。JEV 低于 500ms 也不等于端到端表情延迟低于 500ms。
 - UniTalker 每约 500ms 推理一次，带 400ms 左侧上下文、最长保留两秒音频；不是重新训练的流式模型，没有完整右侧上下文。迟到帧丢弃，声音不中断；服务不可用时显示提示，嘴形回到休息。新链路不做元音检测。
@@ -49,7 +49,7 @@ tailscale serve --bg --https=7443 http://127.0.0.1:5173
 - 每个短句完整合成、解码后播放，嘴形使用同一替换音频推理；字幕和表情按新音频的播放时钟安排。此模式的 JEV 更新按短句进行，不保证每 500ms；需等待文本成句、JEV、TTS 和最多 1.8 秒嘴形准备，延迟高于原声模式。打断/停止会取消合成并丢弃旧结果；合成失败会停止会话，不偷偷播放另一种音色。
 - 单段文本最多 400 字符、音频最多 25 秒，队列有上限；key 仅在本地服务端使用。已用模拟音频验证切换、对齐及打断，尚未用真实 ElevenLabs 凭据试听。
 
-表情概念稿：`design/expression-studies/follow-v1.png`，12 个变体含不安与惊恐；生成提示保存在同目录 `.prompt.txt`，使用内置 imagegen。它是待审核的造型方向，尚未修改 Rive 或新增运行时 `fear` 状态。
+表情概念稿：`design/expression-studies/follow-v1.png`，12 个变体含不安与惊恐；生成提示保存在同目录 `.prompt.txt`，使用内置 imagegen。已据此实现 Follow V2 的原生眼睑、瞳孔、眉形、情绪嘴与头部姿态；运行时和 JEV 已加入 `fear`。这是保留原角色几何的动画改编，并非概念图的逐像素复刻。实际原生渲染对照图为 `design/expression-studies/follow-v2-rendered.png`，可运行 `node scripts/render-follow-studies.mjs` 重建。
 
 可替换组件：`server/jev.mjs`（情绪 provider）、`server/voice.mjs`（语音连接与 P1 委派占位）、`src/voice/controller.js`（编排）、`src/voice/timeline.js`（播放与动作时间线）。头像仍消费 `expression` 与 `arkit-52-v1`，不依赖供应商 API。
 
@@ -176,8 +176,14 @@ npm run rive:export  # 写入 public/milo.rev，不上传到任何 Rive 项目
 
 - 保留黑白造型、原生左右转头与上下跟随；表情和嘴形属于原始面部层，随头部运动。
 - `Follow` 画板 / `State Machine 1` / `FollowFace` View Model。
-- 新增 neutral / happy / sad / curious / surprised / angry 六种原生状态，280ms 转换；
-  `intensity` 在中性和目标状态之间混合。眉毛、眼睑、嘴部和脸颊一起变化。
+- V2 使用 neutral / happy / sad / curious / surprised / angry / fear 七种原生状态，320ms 转换；数值索引依次为 0–6，前六个保持兼容。
+  `intensity=0` 为放松基准，`0.5` 为温和表情，`1` 为强烈表情。happy、sad、surprised、angry、fear 有独立中间造型，共 12 个原生造型。
+  例如 `sad + .5` 是关切，`sad + 1` 是难过；`fear + .5` 是不安，`fear + 1` 是惊恐。
+  上下眼睑使用独立曲线并裁剪瞳孔；瞳孔大小、高光、眉形、情绪嘴和头部姿态一同变化。原始跟随动画仍保留。
+- 在角色选择器切换 **Follow V2 / Follow Classic** 可实时对比；Classic 是 checkpoint `5853e28` 的运行资源和编辑器导出，不随 V2 构建覆盖。
+  Classic 无原生恐惧状态，会把 `fear` 映射为旧版惊讶；其他未支持 fear 的 renderer 使用各自 fallback。
+  UI 的 12 个按钮来自 `src/characters/follow-presets.js`；Follow 预设不写入 jawOpen，保持音频口型独立。
+  控制接口仍是 `{"type":"expression","emotion":"fear","intensity":0.8}`，不依赖 JEV，也不新增模型专用字段。
 - 连续语音几何由八个三次 Bézier 控制点构成：两侧嘴角、上唇左／中／右、下唇左／中／右。
   27 个嘴部通道直接映射到曲线位置与切线，不再合并成嘴宽／嘴高。
   独立 `restWeight / speechWeight` 混合情绪嘴和说话嘴。
@@ -201,7 +207,9 @@ npm run rive:follow:export  # 已登录 CLI 导出 public/follow-expressive.rev
 bash scripts/rive-cli.sh push rive-follow --name="Follow expressions and continuous speech"
 ```
 
-`public/follow-expressive.rev` 可导入 Rive Editor，`.riv` 为网页运行文件。
+`public/follow-expressive.rev` 可导入 Rive Editor，`.riv` 为网页运行文件。当前 V2 的 `.rev` 导出等待 Rive CLI 重新登录；现有该文件仍是升级前版本，不应当作 V2。`public/follow-classic.rev` 固定保留升级前工程；V2 的可编辑本地源码是 `rive-follow/scene.rml`，重新登录后运行 export 命令即可导出。
+
+需要回退时优先在网页切换 Follow Classic。代码级回退可以针对本次升级提交执行 `git revert <升级提交>`，会保留先前语音、JEV、ElevenLabs 功能；不要对整个仓库使用 hard reset。
 在 Editor 选 `Follow` 画板、运行状态机，通过 `FollowFace` 的 `emotion=0..5`、
 `intensity=0..1` 测试表情；嘴形测试设 `restWeight=0`、`speechWeight=1`。
 新版 Follow 用控制点替换了旧的内部 `mouthWidth / mouthHeight` 绑定，公共 AvatarFrame 协议保持不变：

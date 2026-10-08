@@ -102,7 +102,7 @@ test("JEV inspector shows rejected model output separately from applied animatio
   await page.route("**/api/voice/emotion", route => route.fulfill({json:result}));
   const voice = await setup(page); voice.speak();
   await expect(page.locator("#jev-prediction")).toHaveText("悲伤 / 关切 · sad");
-  await expect(page.locator("[data-jev-emotion]")).toHaveCount(6);
+  await expect(page.locator("[data-jev-emotion]")).toHaveCount(7);
   await expect(page.locator("#jev-strength")).toHaveText("0.70 / 0.20");
   await page.locator(".jev-output summary").click();
   expect(JSON.parse(await page.locator("#jev-json").textContent())).toEqual(result);

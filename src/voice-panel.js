@@ -1,7 +1,7 @@
 import { VoiceController } from "./voice/controller.js";
 import { DEFAULT_CONTRACT } from "./framework/contract.js";
 
-const emotionLabels = { neutral: "中性", happy: "开心", sad: "悲伤 / 关切", curious: "好奇", surprised: "惊讶", angry: "生气" };
+const emotionLabels = { neutral: "中性", happy: "开心", sad: "悲伤 / 关切", curious: "好奇", surprised: "惊讶", angry: "生气", fear: "恐惧 / 不安" };
 const describeEmotion = value => value ? `${emotionLabels[value] ?? value} · ${value}` : "等待判定";
 const number = value => Number.isFinite(value) ? value.toFixed(2) : "—";
 
@@ -32,7 +32,7 @@ export class VoicePanel {
         </div>
         <section class="jev-output" aria-labelledby="jev-output-title">
           <div class="row"><h3 id="jev-output-title">JEV 实时输出</h3><span id="jev-updated" class="helper">尚未收到结果</span></div>
-          <div class="jev-choices" aria-label="当前配置的六种表情">${DEFAULT_CONTRACT.expressions.map(name => `<span data-jev-emotion="${name}">${emotionLabels[name]} <small>${name}</small></span>`).join("")}</div>
+          <div class="jev-choices" aria-label="当前配置的七种表情">${DEFAULT_CONTRACT.expressions.map(name => `<span data-jev-emotion="${name}">${emotionLabels[name]} <small>${name}</small></span>`).join("")}</div>
           <dl class="jev-values">
             <div><dt>模型判定</dt><dd id="jev-prediction">等待判定</dd></div>
             <div><dt>语音最近应用</dt><dd id="jev-applied">—</dd></div>

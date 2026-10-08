@@ -106,3 +106,13 @@ test("bridge relays audio, refuses arbitrary commands, and gracefully closes ups
   const ended = once(client, "close"); client.send(JSON.stringify({ type: "session.close" })); await ended;
   assert.equal(closed, true);
 });
+
+test('fear is accepted from JEV and forwarded through the public avatar protocol', async () => {
+  const { validateEvent, DEFAULT_CONTRACT } = await import('../src/framework/contract.js');
+  const { emotions } = await import('../server/jev.mjs');
+  assert.deepEqual(Object.keys(emotions), [...DEFAULT_CONTRACT.expressions]);
+  const result = decodeEmotion({ ...answer, answers: { ...answer.answers,
+    emotion: { type: 'choice', choice: 'fear', confidence: .93 } } });
+  assert.deepEqual(validateEvent({type:'expression',emotion:result.emotion,intensity:result.intensity}),
+    {type:'expression',emotion:'fear',intensity:.8});
+});

@@ -6,12 +6,12 @@ import { FOLLOW_VISEMES, solveFollowFrame } from "./follow-signals.js";
 // Editable source: rive-follow/; the framework remains renderer-independent.
 export const interactiveFollow = {
   id: "follow",
-  label: "Interactive Follow · Expressive",
+  label: "Interactive Follow · V2",
   src: animationUrl,
   artboard: "Follow",
   stateMachine: "State Machine 1",
   pointerGaze: { inset: 0.12 },
-  expressions: { neutral: 0, happy: 1, sad: 2, curious: 3, surprised: 4, angry: 5 },
+  expressions: { neutral: 0, happy: 1, sad: 2, curious: 3, surprised: 4, angry: 5, fear: 6 },
   fallbackExpression: "neutral",
   visemes: FOLLOW_VISEMES,
   fallbackViseme: "REST",

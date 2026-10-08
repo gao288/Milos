@@ -17,13 +17,15 @@ import { RiveAdapter } from "./adapters/rive.js";
 import { OrbAdapter } from "./adapters/orb.js";
 import { milo } from "./characters/milo.js";
 import { miloBasic } from "./characters/milo-basic.js";
+import { followClassic } from "./characters/follow-classic.js";
+import { followPresets } from "./characters/follow-presets.js";
 import { interactiveFollow } from "./characters/interactive-follow.js";
 import { MouthLab } from "./mouth-lab.js";
 import { AudioLab } from "./audio-lab.js";
 import { PerformanceTimeline } from "./framework/performance.js";
 import { VoicePanel } from "./voice-panel.js";
 const $ = (s) => document.querySelector(s);
-const icons = ["◡", "☺", "◠", "◔", "◎", "≋"];
+const icons = ["◡", "☺", "◠", "◔", "◎", "≋", "◉"];
 const labels = [
   "平静 Neutral",
   "开心 Happy",
@@ -31,6 +33,7 @@ const labels = [
   "好奇 Curious",
   "惊讶 Surprise",
   "生气 Angry",
+  "恐惧 Fear",
 ];
 const facialControls = [
   ["browRaiseLeft", "左眉抬起"],
@@ -89,7 +92,7 @@ const presets = {
 };
 $("#app").innerHTML =
   `<header><div class="brand"><span class="logo">m.</span>milo<span style="color:#95a18c"> / </span><small>EXPRESSION LAB</small></div><div class="top-right"><span>让每一个表情，都有回应。</span><div class="pill"><i class="dot"></i> Local playground</div></div></header><main><div class="intro"><div><div class="eyebrow">A little more human</div><h1>Meet your expressive companion.</h1><p>从一个微笑开始。探索表情、声音与动作之间的联系。</p></div><span class="pill">EXPRESSIVE RIG &nbsp; / &nbsp; v0.4</span></div><div class="layout"><section><div class="stage" id="stage"><div class="stage-top"><span class="pill"><i class="dot"></i> LIVE PREVIEW</span><span class="pill" id="emotion-badge">neutral</span></div><div class="orbit"></div><i class="corner tl"></i><i class="corner tr"></i><i class="corner bl"></i><i class="corner br"></i><div id="avatar" role="img" aria-label="参数化动画角色"></div><div class="loading" id="loading" role="status"><span id="load-message">Loading Milo…</span><button id="retry-animation" class="btn hidden">Retry animation</button></div><div class="subtitle" id="subtitle"></div><div class="stage-bottom"><div><strong id="character-name">Milo</strong><p>One protocol. Many personalities.</p></div><button class="round" id="reset" aria-label="重置所有参数">↺</button></div></div><section id="expression-studio" class="panel expression-studio"><div class="panel-head"><div><h2>More than a smile</h2><p>眼睑、眉毛、脸颊与下颌，一起表达。</p></div><button id="demo" class="btn">▷ 表情演示</button></div><div class="preset-grid">${Object.entries(
-    presets,
+    followPresets,
   )
     .map(
       ([id, p]) =>
@@ -97,7 +100,7 @@ $("#app").innerHTML =
     )
     .join(
       "",
-    )}</div><div class="row"><span class="helper">3 个原生动画层 · 10 个细分参数</span><button class="btn" id="face-toggle" aria-expanded="false">面部微调 ＋</button></div><div id="face-tuning" class="hidden"><p class="helper">参数叠加在当前情绪上；左右以画面方向为准。</p><div class="face-grid">${facialControls.map(([id, label]) => `<div class="control"><label for="face-${id}">${label}<output id="face-${id}-value">0.00</output></label><input id="face-${id}" type="range" min="0" max="1" step=".01" value="0"></div>`).join("")}</div><button class="btn" id="face-reset">清除面部叠加</button></div></section><div class="bottom-grid"><div class="panel"><div class="panel-head"><h2>Give your avatar a voice</h2><span class="tag">EN / 中文</span></div><div class="tabs"><button class="tab active" data-tab="text">Streaming text</button><button class="tab" data-tab="audio">Microphone</button></div><div id="text-pane"><textarea id="text" aria-label="要播放的文本" maxlength="4000">Hello! 很高兴见到你。今天一起探索新的表情吧。</textarea><div class="row"><select id="language" aria-label="语音语言"><option value="zh-CN">中文 · Mandarin</option><option value="en-US">English · US</option></select><label style="font-size:10px;color:#849078"><input type="checkbox" id="tts"> 浏览器朗读</label></div><div class="actions"><button class="btn primary wide" id="play">▷ &nbsp; 模拟文本流</button><button class="btn" id="stop">停止</button></div><p class="helper">文本→拼音/拼写嘴形估计。朗读与嘴形使用独立时钟，暂非精确同步。</p></div><div id="audio-pane" class="hidden"><div class="mic-zone"><div class="mic-symbol">◉</div><p>让角色跟随你的声音</p><button class="btn primary" id="mic">开启麦克风</button></div><p class="helper">本地频谱元音估计，支持中英语音；不录音、不上传。需 localhost 或 HTTPS。</p></div></div><div class="panel"><div class="panel-head"><h2>Lip-sync monitor</h2><span class="tag" id="source">IDLE</span></div><div class="eyebrow">Vowel / viseme</div><div class="visemes">${["A", "E", "I", "O", "U", "V", "M"].map((v) => `<button class="viseme" data-viseme="${v}" title="${v === "V" ? "ü / rounded front vowel" : v}">${v === "V" ? "Ü" : v}</button>`).join("")}</div><div class="meter" id="meter">${Array.from({ length: 37 }, () => "<i></i>").join("")}</div><div class="metrics"><span id="viseme-readout">REST</span><span id="confidence">—</span></div><hr><div class="eyebrow">Behavior state</div><div class="state-flow">${["idle", "listening", "speaking"].map((v, i) => `${i ? "<b>↔</b>" : ""}<span class="state-node ${i ? "" : "active"}" data-state="${v}">${v}</span>`).join("")}</div></div></div></section><aside><div class="panel"><div class="panel-head"><h2>Expression controls</h2><span class="tag">6 STATES</span></div><label class="character-label" for="character">角色 / Renderer</label><select id="character"><option value="milo">Milo · 表情升级版</option><option value="milo-basic">Milo Classic · 原版对比</option><option value="orb">Sprout · Canvas 2D</option></select><p>给此刻的角色一点情绪。</p><div class="emotions">${EMOTIONS.map((e, i) => `<button class="emotion ${i ? "" : "active"}" data-emotion="${e}"><span>${icons[i]}</span>${labels[i]}</button>`).join("")}</div>${[
+    )}</div><div class="row"><span class="helper">3 个原生动画层 · 10 个细分参数</span><button class="btn" id="face-toggle" aria-expanded="false">面部微调 ＋</button></div><div id="face-tuning" class="hidden"><p class="helper">参数叠加在当前情绪上；左右以画面方向为准。</p><div class="face-grid">${facialControls.map(([id, label]) => `<div class="control"><label for="face-${id}">${label}<output id="face-${id}-value">0.00</output></label><input id="face-${id}" type="range" min="0" max="1" step=".01" value="0"></div>`).join("")}</div><button class="btn" id="face-reset">清除面部叠加</button></div></section><div class="bottom-grid"><div class="panel"><div class="panel-head"><h2>Give your avatar a voice</h2><span class="tag">EN / 中文</span></div><div class="tabs"><button class="tab active" data-tab="text">Streaming text</button><button class="tab" data-tab="audio">Microphone</button></div><div id="text-pane"><textarea id="text" aria-label="要播放的文本" maxlength="4000">Hello! 很高兴见到你。今天一起探索新的表情吧。</textarea><div class="row"><select id="language" aria-label="语音语言"><option value="zh-CN">中文 · Mandarin</option><option value="en-US">English · US</option></select><label style="font-size:10px;color:#849078"><input type="checkbox" id="tts"> 浏览器朗读</label></div><div class="actions"><button class="btn primary wide" id="play">▷ &nbsp; 模拟文本流</button><button class="btn" id="stop">停止</button></div><p class="helper">文本→拼音/拼写嘴形估计。朗读与嘴形使用独立时钟，暂非精确同步。</p></div><div id="audio-pane" class="hidden"><div class="mic-zone"><div class="mic-symbol">◉</div><p>让角色跟随你的声音</p><button class="btn primary" id="mic">开启麦克风</button></div><p class="helper">本地频谱元音估计，支持中英语音；不录音、不上传。需 localhost 或 HTTPS。</p></div></div><div class="panel"><div class="panel-head"><h2>Lip-sync monitor</h2><span class="tag" id="source">IDLE</span></div><div class="eyebrow">Vowel / viseme</div><div class="visemes">${["A", "E", "I", "O", "U", "V", "M"].map((v) => `<button class="viseme" data-viseme="${v}" title="${v === "V" ? "ü / rounded front vowel" : v}">${v === "V" ? "Ü" : v}</button>`).join("")}</div><div class="meter" id="meter">${Array.from({ length: 37 }, () => "<i></i>").join("")}</div><div class="metrics"><span id="viseme-readout">REST</span><span id="confidence">—</span></div><hr><div class="eyebrow">Behavior state</div><div class="state-flow">${["idle", "listening", "speaking"].map((v, i) => `${i ? "<b>↔</b>" : ""}<span class="state-node ${i ? "" : "active"}" data-state="${v}">${v}</span>`).join("")}</div></div></div></section><aside><div class="panel"><div class="panel-head"><h2>Expression controls</h2><span class="tag">7 STATES</span></div><label class="character-label" for="character">角色 / Renderer</label><select id="character"><option value="milo">Milo · 表情升级版</option><option value="milo-basic">Milo Classic · 原版对比</option><option value="orb">Sprout · Canvas 2D</option></select><p>给此刻的角色一点情绪。</p><div class="emotions">${EMOTIONS.map((e, i) => `<button class="emotion ${i ? "" : "active"}" data-emotion="${e}"><span>${icons[i]}</span>${labels[i]}</button>`).join("")}</div>${[
     ["intensity", "表情强度 / Intensity", 0, 1, 0.8],
     ["gazeX", "视线 X / Gaze", -1, 1, 0],
     ["gazeY", "视线 Y / Gaze", -1, 1, 0],
@@ -116,18 +119,21 @@ $("#app").innerHTML =
   "intensity": 0.9
 }</textarea><button class="btn" id="send-event">发送事件</button><p class="helper">window.avatar.dispatch(event)<br>window.avatar.pushText(chunk, final)</p></details></div><div id="status" role="status">正在加载 Rive 状态机…</div></div><p class="side-note">表情层与嘴形层独立运行。<br>切换角色时，表情与嘴形继续运行。</p></aside></div><footer><span>MILO LAB &nbsp; / &nbsp; Built for a more expressive connection.</span><span>Layered expressions · State & viseme protocol · v0.4</span></footer></main>`;
 const runtime = new AvatarRuntime();
-$("#character").add(new Option("Interactive Follow · 表情与嘴形", "follow"));
+$("#character").add(new Option("Follow V2 · 12 个表情造型", "follow"));
+$("#character").add(new Option("Follow Classic · 升级前对比", "follow-classic"));
 $("#stage").insertAdjacentHTML("afterend", `
   <section id="follow-info" class="panel follow-info hidden">
     <strong>Interactive Character Follow</strong>
     <p>在画面上移动鼠标，或用视线 X / Y 滑块控制转头。角色自带眨眼。</p>
-    <p>六种原生情绪状态、面部微调和连续嘴形已接入。可以播放中英文语音样本，或发送 JEV / JSON 控制事件。</p>
+    <p>V2：七种情绪、12 个表情造型；独立眼睑、瞳孔、眉形和连续嘴形已接入。可以播放中英文语音样本，或发送 JEV / JSON 控制事件。</p>
     <p class="helper">作品：<a href="https://rive.app/marketplace/28334-53514-interactive-character-follow/" target="_blank" rel="noopener noreferrer">alinazari · Interactive Character Follow</a>
       · <a href="https://creativecommons.org/licenses/by/4.0/" target="_blank" rel="noopener noreferrer">CC BY 4.0</a>
       · 改编：保留角色与跟随动画，新增表情状态和语音嘴形。
-      <a href="https://editor.rive.app/file/Interactive-Character-Follow/2624622" target="_blank" rel="noopener noreferrer">在 Rive Editor 中编辑 ↗</a>
+      <span>V2 编辑器工程：等待 Rive 登录后导出</span> · <a href="/follow-classic.rev" download>下载升级前工程</a>
     </p>
   </section>`);
+// Keep the expression studies immediately below the avatar, ahead of voice labs.
+$("#stage").insertAdjacentElement("afterend", $("#expression-studio"));
 const target = runtime.parameters;
 let emotion = "neutral",
   behavior = "idle",
@@ -142,7 +148,8 @@ let audioLab = null;
 let mouthLab = null;
 let voicePanel = null;
 const characters = new Map([
-  ["follow", { name: "Interactive Follow", create: () => new RiveAdapter(interactiveFollow) }],
+  ["follow-classic", { name: "Follow Classic", create: () => new RiveAdapter(followClassic) }],
+  ["follow", { name: "Follow V2", create: () => new RiveAdapter(interactiveFollow) }],
   ["milo", { name: "Milo", create: () => new RiveAdapter(milo) }],
   [
     "milo-basic",
@@ -295,17 +302,19 @@ async function setCharacter(id) {
     character = id;
     audioLab?.setCharacter(id);
     mouthLab?.setCharacter(id);
-    const isFollow = id === "follow";
+    const isFollow = id === "follow" || id === "follow-classic";
     $("#stage").classList.toggle("follow-stage", isFollow);
     $("#follow-info").classList.toggle("hidden", !isFollow);
     $("#follow").checked = isFollow;
     document.querySelectorAll("[data-emotion], #intensity, #headTilt, #auto-blink, #idle-motion, #blink, #nod, #shake")
       .forEach((control) => { control.disabled = false; });
     $("#emotion-badge").textContent = emotion;
-    $(".side-note").textContent = isFollow
+    $(".side-note").textContent = id === "follow-classic"
+      ? "升级前版本：六种原生表情；fear 使用旧版惊讶造型。切换回 Follow V2 可查看新版眼睑和恐惧。"
+      : isFollow
       ? "原生转头、眨眼与表情层同时运行；语音模型控制连续嘴形，JEV 控制情绪和动作。"
       : "表情层与嘴形层独立运行。切换角色时，表情与嘴形继续运行。";
-    $("#expression-studio").classList.toggle("hidden", !["milo", "follow"].includes(id));
+    $("#expression-studio").classList.toggle("hidden", !["milo", "follow", "follow-classic"].includes(id));
     stopDemo();
     $("#character").value = id;
     $("#character-name").textContent = entry.name;
@@ -447,14 +456,14 @@ function stopDemo() {
   $("#demo").textContent = "▷ 表情演示";
 }
 function applyPreset(id) {
-  const preset = presets[id];
+  const preset = character === "follow" ? (followPresets[id] ?? presets[id]) : (presets[id] ?? followPresets[id]);
   if (!preset) throw Error("未知 preset");
   setFace({
     ...Object.fromEntries(facialControls.map(([k]) => [k, 0])),
     ...preset.face,
   });
   setEmotion(preset.emotion, preset.intensity);
-  dispatch({ type: "motion", headTilt: preset.tilt, gazeX: 0, gazeY: 0 });
+  dispatch({ type: "motion", headTilt: preset.tilt ?? 0, gazeX: 0, gazeY: 0 });
   document
     .querySelectorAll("[data-preset]")
     .forEach((el) => el.classList.toggle("active", el.dataset.preset === id));
@@ -486,7 +495,7 @@ $("#demo").onclick = () => {
     return;
   }
   stop();
-  const sequence = Object.keys(presets);
+  const sequence = Object.keys(followPresets);
   let index = 0;
   applyPreset(sequence[index]);
   $("#demo").textContent = "■ 停止演示";
