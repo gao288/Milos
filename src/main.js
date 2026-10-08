@@ -110,7 +110,7 @@ $("#app").innerHTML =
     )
     .join(
       "",
-    )}<hr><label class="switch-row">自然眨眼 <input id="auto-blink" type="checkbox" checked></label><label class="switch-row">呼吸与微动作 <input id="idle-motion" type="checkbox" checked></label><label class="switch-row">视线跟随鼠标 <input id="follow" type="checkbox"></label><div class="actions"><button class="btn wide" id="blink">眨一下眼</button><button class="btn wide" id="nod">点点头</button></div><div class="event-box"><hr><details><summary>↗ &nbsp; JEV / JSON event bridge</summary><textarea id="event-json" aria-label="控制事件 JSON">{
+    )}<hr><label class="switch-row">自然眨眼 <input id="auto-blink" type="checkbox" checked></label><label class="switch-row">自然待机动作 <input id="idle-motion" type="checkbox" checked></label><label class="switch-row">视线跟随鼠标 <input id="follow" type="checkbox"></label><div class="actions"><button class="btn wide" id="blink">眨一下眼</button><button class="btn wide" id="nod">点点头</button><button class="btn wide" id="shake">摇摇头</button></div><div class="event-box"><hr><details><summary>↗ &nbsp; JEV / JSON event bridge</summary><textarea id="event-json" aria-label="控制事件 JSON">{
   "type": "expression",
   "emotion": "happy",
   "intensity": 0.9
@@ -253,13 +253,15 @@ function dispatch(raw) {
   const e = validateEvent(raw);
   if (e.type === "face") setFace(e.values);
   if (e.type === "expression") setEmotion(e.emotion, e.intensity);
-  if (e.type === "motion")
-    for (const k of ["gazeX", "gazeY", "headTilt"])
+  if (e.type === "motion") {
+    runtime.dispatch(e);
+    if (e.durationMs === undefined) for (const k of ["gazeX", "gazeY", "headTilt"])
       if (e[k] !== undefined) {
         target[k] = e[k];
         $("#" + k).value = e[k];
         $("#" + k + "-value").textContent = e[k].toFixed(2);
       }
+  }
   if (e.type === "text") {
     if (source !== "text") stop();
     pushText(e.chunk, e.final);
@@ -297,7 +299,7 @@ async function setCharacter(id) {
     $("#stage").classList.toggle("follow-stage", isFollow);
     $("#follow-info").classList.toggle("hidden", !isFollow);
     $("#follow").checked = isFollow;
-    document.querySelectorAll("[data-emotion], #intensity, #headTilt, #auto-blink, #idle-motion, #blink, #nod")
+    document.querySelectorAll("[data-emotion], #intensity, #headTilt, #auto-blink, #idle-motion, #blink, #nod, #shake")
       .forEach((control) => { control.disabled = false; });
     $("#emotion-badge").textContent = emotion;
     $(".side-note").textContent = isFollow
@@ -496,6 +498,7 @@ $("#demo").onclick = () => {
 $("#blink").onclick = () =>
   runtime.dispatch({ type: "gesture", name: "blink" });
 $("#nod").onclick = () => runtime.dispatch({ type: "gesture", name: "nod" });
+$("#shake").onclick = () => runtime.dispatch({ type: "gesture", name: "shake" });
 $("#reset").onclick = () => {
   stop();
   setEmotion("neutral", 0.8);
@@ -510,6 +513,7 @@ $("#reset").onclick = () => {
 };
 $("#stage").onpointermove = (e) => {
   if ($("#follow").checked) {
+    runtime.attentionUntil = performance.now() + 1800;
     const b = $("#stage").getBoundingClientRect();
     target.gazeX = clamp(((e.clientX - b.left) / b.width) * 2 - 1, -1, 1);
     target.gazeY = clamp(((e.clientY - b.top) / b.height) * 2 - 1, -1, 1);

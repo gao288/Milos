@@ -1,6 +1,7 @@
 import { CueQueue, PlayoutMap, transcriptFragment, pcmDecode, pcmEncode } from "./timeline.js";
 import { PerformanceTimeline } from "../framework/performance.js";
 import { encodeWav, LocalAudioModelProvider } from "../providers/audio-model.js";
+import { SpeechEnvelope, pcmRms } from "./speech-envelope.js";
 
 /** Voice, expression and mouth providers meet only at normalized avatar events.
  * Transcript timestamps are approximate session times. PCM packets have no
@@ -42,6 +43,7 @@ export class VoiceController {
       const mute = context.createGain(); mute.gain.value = 0;
       this.mic.connect(this.capture); this.capture.connect(mute); mute.connect(context.destination);
       this.map = new PlayoutMap(bufferMs / 1000);
+      this.envelope = new SpeechEnvelope();
       this.captions = []; this.history = []; this.fragments = []; this.emotions = new CueQueue();
       this.mouth = new PerformanceTimeline(); this.resetMouth();
       this.sessionOrigin = context.currentTime; this.started = false; this.inputLevel = 0; this.speechMs = 0;
@@ -79,8 +81,12 @@ export class VoiceController {
   }
   // The runtime sees a bounded rolling timeline; no renderer-specific state.
   installMouth() {
-    this.avatar.setTimeline({ sample: ms => this.map.slots.some(s => ms >= s.at * 1000 && ms < s.end * 1000)
-      ? this.mouth.sample(ms) : null }, () => this.context.currentTime * 1000);
+    this.avatar.setTimeline({ sample: ms => {
+      const gain = this.envelope.sample(ms / 1000);
+      if (gain <= 0.001) return null;
+      const frame = this.mouth.sample(ms);
+      return frame ? { ...frame, weight: frame.weight * gain } : null;
+    } }, () => this.context.currentTime * 1000);
   }
   resetMouth() { this.pcm = new Float32Array(0); this.pcmStart = 0; this.inferredThrough = 0; this.lastMouthFrame = -1; this.mouthBusy = false; }
   receive(event) {
@@ -94,7 +100,8 @@ export class VoiceController {
       this.bargeActive = false;
       const samples = pcmDecode(event.delta);
       const slot = this.map.append(samples.length, now);
-      slot.audible = samples.some(v => Math.abs(v) > 0.004);
+      slot.audible = pcmRms(samples) >= 0.008;
+      this.envelope.append(samples, slot.at);
       if (slot.end - now > 5) throw Error("播放队列过长，请结束并重连");
       const buffer = this.context.createBuffer(1, samples.length, 16000); buffer.copyToChannel(samples, 0);
       const source = this.context.createBufferSource(); source.buffer = buffer; source.connect(this.context.destination);
@@ -133,11 +140,18 @@ export class VoiceController {
     while (this.captions[0]?.startMs <= transcriptClock && this.map.slots.some(slot =>
       slot.audible && slot.at <= now && slot.end >= this.sessionOrigin + this.captions[0].startMs / 1000 + this.map.delay))
       this.onTranscript(this.captions.shift());
-    const speaking = this.map.slots.some(slot => slot.audible && now >= slot.at && now < slot.end);
+    const speaking = this.envelope.sample(now) > 0.08;
     const cue = speaking ? this.emotions.take(now) : null;
     if (cue && cue.confidence >= 0.35) {
       this.avatar.dispatch({ type: "expression", emotion: cue.emotion, intensity: cue.intensity });
       this.emotionUntil = cue.until;
+      if (cue.motion && cue.motionConfidence >= 0.5) {
+        this.avatar.dispatch({ type: "motion", headTilt: cue.motion.headTilt, durationMs: 1800 });
+      }
+      if (cue.gesture && cue.gesture !== "none" && cue.gestureConfidence >= 0.65 && now >= (this.nextGestureAt ?? 0)) {
+        this.avatar.dispatch({ type: "gesture", name: cue.gesture });
+        this.nextGestureAt = now + 6;
+      }
       this.onMetrics({ emotion: cue.emotion, inferenceMs: cue.inferenceMs, lateMs: Math.max(0, Math.round((now - cue.at) * 1000)) });
     }
     if (this.emotionUntil && now > this.emotionUntil) { this.avatar.dispatch({ type: "expression", emotion: "neutral", intensity: 0.3 }); this.emotionUntil = 0; }
@@ -183,6 +197,7 @@ export class VoiceController {
     const samples = this.pcm.slice(from - this.pcmStart);
     const startNew = this.inferredThrough;
     this.inferredThrough = end; this.mouthBusy = true;
+    if (pcmRms(samples) < 0.003) { this.mouthBusy = false; return; }
     const abort = new AbortController(); this.mouthAbort = abort;
     try {
       const clip = await this.model.infer(encodeWav(samples), AbortSignal.any([abort.signal, AbortSignal.timeout(1800)]));
@@ -209,11 +224,13 @@ export class VoiceController {
     this.dropAudioUntil = this.context.currentTime + 0.3;
     this.bargeActive = fromMic;
     for (const s of this.sources) s.stop(); this.sources.clear(); this.map.clear();
+    this.envelope.clear();
     this.emotions.clear(); this.emotionAbort?.abort(); this.mouthAbort?.abort();
     this.emotionBusy = false; this.captions = []; this.fragments = [];
     this.discardBeforeMs = Math.max(0, (this.context.currentTime - this.sessionOrigin) * 1000);
     this.mouth = new PerformanceTimeline(); this.resetMouth(); this.installMouth();
     this.avatar.dispatch({ type: "expression", emotion: "neutral", intensity: 0.3 });
+    this.avatar.dispatch({ type: "motion", headTilt: 0, durationMs: 200 });
   }
   stop() {
     const wasActive = this.active;
@@ -235,6 +252,8 @@ export class VoiceController {
     this.context?.close().catch(() => {}); this.context = null;
     this.avatar.clearTimeline();
     if (wasActive) this.avatar.dispatch({ type: "expression", emotion: "neutral", intensity: 0.3 });
+    if (wasActive) this.avatar.dispatch({ type: "motion", headTilt: 0, durationMs: 200 });
+    this.nextGestureAt = 0;
     this.onActive(false);
     this.modelReady = false; this.discardBeforeMs = 0; this.quietUntil = 0; this.dropAudioUntil = 0; this.bargeActive = false; this.emotionUntil = 0; this.retryEmotionAt = 0; this.behavior = null;
   }

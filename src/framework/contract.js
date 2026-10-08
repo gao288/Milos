@@ -118,6 +118,9 @@ export function validateEvent(event, contract = DEFAULT_CONTRACT) {
     case "motion":
       return {
         type: event.type,
+        ...(event.durationMs === undefined ? {} : {
+          durationMs: number(event.durationMs, "durationMs", 0, 60000),
+        }),
         ...Object.fromEntries(
           ["gazeX", "gazeY", "headTilt"]
             .filter((k) => event[k] !== undefined)
@@ -125,7 +128,7 @@ export function validateEvent(event, contract = DEFAULT_CONTRACT) {
         ),
       };
     case "gesture":
-      if (!["blink", "nod"].includes(event.name)) throw Error("未知 gesture");
+      if (!["blink", "nod", "shake"].includes(event.name)) throw Error("未知 gesture");
       return { type: event.type, name: event.name };
     case "text":
       if (typeof event.chunk !== "string" || event.chunk.length > 4000)

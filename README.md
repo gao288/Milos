@@ -30,7 +30,10 @@ tailscale serve --bg --https=7443 http://127.0.0.1:5173
 使用命令返回的 HTTPS 链接，浏览器提示时允许麦克风。语音 WebSocket 自动使用同一入口的 WSS。
 
 - GPT-Live：默认 `gpt-live-1` / `marin`，双向 16 kHz PCM16；可用 `GPT_LIVE_MODEL` / `GPT_LIVE_VOICE` 配置。会话开始前不上传麦克风数据，结束时释放麦克风、音频队列及动画，并等待服务端关闭确认。
-- JEV：官方 `POST https://api.typesafe.ai/v1/systemone`，固定 `jev-1.13.0`（可用 `JEV_MODEL` 配置）。一次请求分别用 Choice 判断六种情绪、Score 判断强度。`score / 4` 才是强度，confidence 单独用于抑制低置信度切换。
+- JEV：官方 `POST https://api.typesafe.ai/v1/systemone`，固定 `jev-1.13.0`（可用 `JEV_MODEL` 配置）。一次请求同时判断六种情绪、强度、头部倾斜和有意的点头/摇头。`score / 4` 才是强度，confidence 单独用于抑制低置信度切换。
+- 头部倾斜是文本语义对应的动作建议，不是从音频学习得到的真实姿态预测。JEV 的倾斜建议限制在 ±0.3，置信度至少 0.5 才使用；以 1.8 秒临时叠加层平滑进入/退出，不覆盖手动滑块。点头/摇头要求置信度至少 0.65，间隔至少 6 秒。
+- 静音嘴形：在实际播放时钟上计算 20ms 音量包络，使用开启/关闭双阈值（RMS 0.008/0.004）、短暂停顿保持和约 140ms 收口。低于阈值的音频不会让静息嘴形反复切换到说话曲线；纯静音窗口也跳过嘴形推理。很轻的耳语可能被阈值过滤，仍需不同声音的实机调参。
+- 自然待机动作由本地 `NaturalMotion` 生成，不调用 JEV：随机间隔转头、歪头、停留、回正，加上呼吸和眨眼；说话和聆听时动作较小，鼠标跟随时暂让出自主视线。可通过「自然待机动作」开关关闭。
 - 每 500ms 检查新增回复文本，附带最近对话上下文；最多一个 JEV 请求在途，没有新增文本时不重复收费调用。慢请求会降低实际更新频率；超时、失败或过期结果不会阻塞声音，失败后退避两秒。
 - 播放缓冲默认 **800ms**，可在连接前调为 200–1500ms。字幕和情绪保留 GPT-Live 的 `start_ms/end_ms`，以 AudioContext 时钟调度；嘴形按实际 PCM 样本对应的播放位置调度。音频与嘴形映射不依赖请求返回先后。
 - **同步限制：** 官方文本时间戳仅为近似片段时间；输出音频没有时间戳，也没有 audio-done 事件。当前以收到 session.started 时的音频时钟估算会话起点，不能消除传输延迟与服务端时钟偏差，不能保证逐字同步。已验证片段级联动，仍需逐字测量与设备校准。JEV 低于 500ms 也不等于端到端表情延迟低于 500ms。
@@ -272,7 +275,9 @@ JEV / SSE / WebSocket ── expression / behavior / motion / gesture ─┐
 | behavior   | idle / listening / speaking                                        |
 | mouth      | REST / A / E / I / O / U / V（ü）/ M，weight 0–1                   |
 | motion     | gazeX / gazeY / headTilt：-1–1                                     |
-| gesture    | blink / nod                                                        |
+| gesture    | blink / nod / shake                                                        |
+
+motion 不带 `durationMs` 时更新手动基础姿态；带 `durationMs` 时是临时叠加姿态，到期平滑回到基础姿态。例：`dispatch({type: "motion", headTilt: .25, durationMs: 1800})`。临时层、待机层与基础姿态合成后限制在 -1–1。`gesture: nod` 在竖直转头通道上点头，`shake` 在水平通道上摇头。
 
 `AvatarFrame` 的嘴形输出是包含 REST 的权重字典，总和为 1，切换时逐渐混合。像素尺寸、骨骼名称、Rive 数字编号都属于 adapter/rig。`durationMs` 为收到事件后的相对时长；省略则保持到下一条嘴形事件，设为 0 则下一帧恢复 REST。当前没有绝对音频时间轴调度器，TTS/语音服务应在音频时钟到达时发送对应事件。
 
@@ -382,7 +387,7 @@ export LD_LIBRARY_PATH="$PWD/.tools/libs/usr/lib/x86_64-linux-gnu:${LD_LIBRARY_P
 
 ## JEV 接入
 
-目前尚未确定 JEV 的具体产品/协议，因此提供通用适配入口，未连接外部模型。下列 API 可由后续 WebSocket / SSE 客户端调用；本项目不包含远程连接后端。
+GPT-Live 面板已通过本地 `server/jev.mjs` 接入 JEV，密钥只留在服务端。下列归一化 API 也可以由其他 WebSocket / SSE 客户端调用，角色和动画不依赖 JEV 的响应格式。
 
 ```js
 window.avatar.dispatch({

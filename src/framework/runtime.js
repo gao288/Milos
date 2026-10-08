@@ -4,6 +4,7 @@ import {
   validateEvent,
   clamp,
 } from "./contract.js";
+import { NaturalMotion } from "./natural-motion.js";
 
 /** Engine-independent state, blending, gestures and renderer lifecycle. */
 export class AvatarRuntime {
@@ -43,6 +44,12 @@ export class AvatarRuntime {
     };
     this.blinkStart = -Infinity;
     this.nodStart = -Infinity;
+    this.shakeStart = -Infinity;
+    this.attentionUntil = 0;
+    this.naturalMotion = new NaturalMotion(random, clock());
+    this.ambient = { gazeX: 0, gazeY: 0, headTilt: 0 };
+    this.cueMotion = { ...this.ambient };
+    this.motionCue = null;
     this.nextBlink = clock() + 2500;
     this.last = clock();
     this.renderer = null;
@@ -80,12 +87,14 @@ export class AvatarRuntime {
         throw Error(`Transition not allowed: ${this.behavior} → ${e.state}`);
       this.behavior = e.state;
     }
-    if (e.type === "motion")
+    if (e.type === "motion" && e.durationMs !== undefined) {
+      this.motionCue = { ...e, expires: this.clock() + e.durationMs };
+    } else if (e.type === "motion")
       for (const key of ["gazeX", "gazeY", "headTilt"]) {
         if (e[key] !== undefined) this.parameters[key] = e[key];
       }
     if (e.type === "gesture")
-      this[e.name === "blink" ? "blinkStart" : "nodStart"] = this.clock();
+      this[`${e.name}Start`] = this.clock();
     if (e.type === "viseme")
       this.mouth = {
         value: e.value,
@@ -94,6 +103,9 @@ export class AvatarRuntime {
       };
     if (e.type === "stop") {
       this.clearPerformance();
+      this.motionCue = null;
+      for (const k of Object.keys(this.cueMotion)) this.cueMotion[k] = 0;
+      this.nodStart = this.shakeStart = -Infinity;
       this.behavior = this.contract.initialBehavior;
       this.mouth = {
         value: this.contract.restViseme,
@@ -145,6 +157,16 @@ export class AvatarRuntime {
       this.smoothedFace[k] += (this.face[k] - this.smoothedFace[k]) * alpha;
     for (const k of ["intensity", "gazeX", "gazeY", "headTilt"])
       this.smoothed[k] += (this.parameters[k] - this.smoothed[k]) * alpha;
+    const ambient = this.naturalMotion.update(now, {
+      enabled: this.options.idleMotion, behavior: this.behavior,
+      attention: now < this.attentionUntil,
+    });
+    if (this.motionCue && now >= this.motionCue.expires) this.motionCue = null;
+    for (const k of Object.keys(this.ambient)) {
+      this.ambient[k] = this.options.idleMotion
+        ? this.ambient[k] + (ambient[k] - this.ambient[k]) * (1 - Math.exp(-dt * 7)) : 0;
+      this.cueMotion[k] += ((this.motionCue?.[k] ?? 0) - this.cueMotion[k]) * (1 - Math.exp(-dt * 5));
+    }
     if (now >= this.mouth.expires)
       this.mouth = {
         value: this.contract.restViseme,
@@ -178,6 +200,10 @@ export class AvatarRuntime {
     const performance = source?.timeline.sample(source.readTimeMs()) ?? null;
     const blinkAge = (now - this.blinkStart) / 180;
     const nodAge = (now - this.nodStart) / 700;
+    const shakeAge = (now - this.shakeStart) / 1000;
+    const nod = nodAge >= 0 && nodAge < 1 ? Math.sin(nodAge * Math.PI) ** 2 * 0.22 : 0;
+    const shake = shakeAge >= 0 && shakeAge < 1
+      ? Math.sin(shakeAge * Math.PI * 4) * Math.sin(shakeAge * Math.PI) ** 2 * 0.25 : 0;
     return {
       version: 1,
       performance: performance ? { ...performance, upperFaceWeight: source.upperFaceWeight } : null,
@@ -190,14 +216,10 @@ export class AvatarRuntime {
       mouth: { viseme: this.mouth.value, weights: { ...this.weights } },
       motion: {
         liveliness: this.options.idleMotion ? 1 : 0,
-        gazeX: this.smoothed.gazeX,
-        gazeY: this.smoothed.gazeY,
+        gazeX: clamp(this.smoothed.gazeX + this.ambient.gazeX + this.cueMotion.gazeX + shake, -1, 1),
+        gazeY: clamp(this.smoothed.gazeY + this.ambient.gazeY + this.cueMotion.gazeY + nod, -1, 1),
         headTilt: clamp(
-          this.smoothed.headTilt +
-            (nodAge >= 0 && nodAge < 1
-              ? Math.sin(nodAge * Math.PI * 2) * 0.5
-              : 0) +
-            (this.options.idleMotion ? Math.sin(now / 2600) * 0.1 : 0),
+          this.smoothed.headTilt + this.ambient.headTilt + this.cueMotion.headTilt,
           -1,
           1,
         ),

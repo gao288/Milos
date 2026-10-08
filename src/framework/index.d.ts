@@ -14,8 +14,8 @@ export type AvatarEvent =
   | { type: "face"; values: Record<string, number> }
   | { type: "expression"; emotion: string; intensity?: number }
   | { type: "behavior"; state: string }
-  | { type: "motion"; gazeX?: number; gazeY?: number; headTilt?: number }
-  | { type: "gesture"; name: "blink" | "nod" }
+  | { type: "motion"; gazeX?: number; gazeY?: number; headTilt?: number; durationMs?: number }
+  | { type: "gesture"; name: "blink" | "nod" | "shake" }
   | { type: "viseme"; value: string; weight?: number; durationMs?: number }
   | { type: "stop" };
 
@@ -88,6 +88,7 @@ export class AvatarRuntime {
     smoothing: number;
   };
   options: { autoBlink: boolean; idleMotion: boolean };
+  attentionUntil: number;
   dispatch(event: AvatarEvent): NormalizedAvatarEvent;
   setPerformance(timeline: PerformanceTimeline, readTimeMs: () => number,
     options?: { upperFaceWeight?: number }): void;
