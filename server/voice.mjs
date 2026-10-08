@@ -6,7 +6,7 @@ import { inferEmotion, JEV_MODEL } from "./jev.mjs";
 
 export function liveConfig(env = process.env) {
   return { model: env.GPT_LIVE_MODEL || "gpt-live-1", audio: {
-    format: { type: "audio/pcm", rate: 16000 }, output: { voice: env.GPT_LIVE_VOICE || "marin" },
+    format: { type: "audio/pcm", rate: 16000 }, output: { voice: env.GPT_LIVE_VOICE || "meridian" },
   }, delegation: { type: "client" }, instructions:
     "You are a friendly animated companion. Converse naturally in English or Chinese, following the user's language. Be concise and warm. Local task execution is not connected yet: do not claim to execute commands or modify files. If asked to perform a complex task, explain that task delegation is coming in the next update. Listen when the user interrupts." };
 }
