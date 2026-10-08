@@ -2,6 +2,7 @@ import { CueQueue, PlayoutMap, transcriptFragment, pcmDecode, pcmEncode } from "
 import { PerformanceTimeline } from "../framework/performance.js";
 import { encodeWav, LocalAudioModelProvider } from "../providers/audio-model.js";
 import { SpeechEnvelope, pcmRms } from "./speech-envelope.js";
+import { emotionWindow, rememberSpeech } from "./emotion-context.js";
 
 /** Voice, expression and mouth providers meet only at normalized avatar events.
  * Transcript timestamps are approximate session times. PCM packets have no
@@ -113,13 +114,13 @@ export class VoiceController {
     }
     const fragment = transcriptFragment(event);
     if (fragment) {
-      this.history.push(fragment); if (this.history.length > 100) this.history.shift();
+      rememberSpeech(this.history, fragment);
       if (fragment.role === "user") this.onTranscript(fragment);
       else if (fragment.endMs >= (this.discardBeforeMs ?? 0)) {
         this.fragments.push(fragment); this.captions.push(fragment);
         this.fragments.sort((a, b) => a.startMs - b.startMs);
         this.captions.sort((a, b) => a.startMs - b.startMs);
-        if (this.fragments.length > 40) this.fragments.shift();
+        if (this.fragments.length > 200) this.fragments.shift();
         if (this.captions.length > 200) this.captions.shift();
       }
       return;
@@ -144,7 +145,7 @@ export class VoiceController {
     const cue = speaking ? this.emotions.take(now) : null;
     if (cue && cue.confidence >= 0.35) {
       this.avatar.dispatch({ type: "expression", emotion: cue.emotion, intensity: cue.intensity });
-      this.emotionUntil = cue.until;
+      this.emotionUntil = Math.max(cue.until, now + 1.2);
       if (cue.motion && cue.motionConfidence >= 0.5) {
         this.avatar.dispatch({ type: "motion", headTilt: cue.motion.headTilt, durationMs: 1800 });
       }
@@ -152,9 +153,14 @@ export class VoiceController {
         this.avatar.dispatch({ type: "gesture", name: cue.gesture });
         this.nextGestureAt = now + 6;
       }
-      this.onMetrics({ emotion: cue.emotion, inferenceMs: cue.inferenceMs, lateMs: Math.max(0, Math.round((now - cue.at) * 1000)) });
+      this.onMetrics({ emotion: cue.emotion, intensity: cue.intensity, confidence: cue.confidence,
+        inferenceMs: cue.inferenceMs, lateMs: Math.max(0, Math.round((now - cue.at) * 1000)) });
     }
-    if (this.emotionUntil && now > this.emotionUntil) { this.avatar.dispatch({ type: "expression", emotion: "neutral", intensity: 0.3 }); this.emotionUntil = 0; }
+    if (this.emotionUntil && now > this.emotionUntil) {
+      this.avatar.dispatch({ type: "expression", emotion: "neutral", intensity: 0.3 });
+      this.onMetrics({ emotion: "neutral", intensity: 0.3, confidence: null });
+      this.emotionUntil = 0;
+    }
     const state = speaking ? "speaking" : "listening";
     if (this.started && state !== this.behavior) { this.avatar.dispatch({ type: "behavior", state }); this.behavior = state; }
     this.inferEmotion();
@@ -166,23 +172,24 @@ export class VoiceController {
     const now = this.context.currentTime, latest = this.fragments.at(-1);
     if (!this.config.jevConfigured || !latest || this.emotionBusy || now < (this.retryEmotionAt ?? 0) ||
         now - this.lastEmotionAt < 0.5 || latest.endMs <= this.lastEmotionEnd) return;
-    const fragments = this.fragments.filter(f => f.endMs > this.lastEmotionEnd);
-    const first = fragments[0]; this.lastEmotionAt = now; this.lastEmotionEnd = latest.endMs;
+    const window = emotionWindow(this.fragments, this.history, this.lastEmotionEnd);
+    if (!window) return;
+    this.lastEmotionAt = now; this.lastEmotionEnd = latest.endMs;
+    if (!window.currentText.trim()) return;
     const epoch = this.emotions.epoch, generation = this.generation;
     this.emotionBusy = true;
     const abort = new AbortController(); this.emotionAbort = abort;
     try {
       const response = await fetch("/api/voice/emotion", { method: "POST",
         headers: { "Content-Type": "application/json", "X-Realpet-Token": this.config.token },
-        body: JSON.stringify({ text: fragments.map(f => f.text).join("").slice(-3000),
-          context: this.history.filter(f => f.endMs <= first.startMs).slice(-12).map(f => ({ role: f.role, text: f.text.slice(-2000) })) }),
+        body: JSON.stringify({ text: window.text, currentText: window.currentText, context: window.context }),
         signal: AbortSignal.any([abort.signal, AbortSignal.timeout(2500)]),
       });
       const data = await response.json(); if (!response.ok) throw Error(data.error || `JEV HTTP ${response.status}`);
       if (generation !== this.generation || epoch !== this.emotions.epoch) return;
-      this.emotions.add({ ...data, at: this.sessionOrigin + first.startMs / 1000 + this.map.delay,
+      this.emotions.add({ ...data, at: this.sessionOrigin + window.startMs / 1000 + this.map.delay,
         until: this.sessionOrigin + latest.endMs / 1000 + this.map.delay + 0.6 }, epoch);
-      this.onMetrics({ inferenceMs: data.inferenceMs });
+      this.onMetrics({ prediction: data.emotion, predictionConfidence: data.confidence, inferenceMs: data.inferenceMs });
     } catch (error) {
       if (generation === this.generation && !abort.signal.aborted) { this.retryEmotionAt = this.context.currentTime + 2; this.onStatus(`情绪暂时沿用上一状态：${error.message}`); }
     } finally { if (generation === this.generation && this.emotionAbort === abort) this.emotionBusy = false; }

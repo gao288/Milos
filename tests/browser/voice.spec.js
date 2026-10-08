@@ -34,6 +34,7 @@ async function setup(page) {
   await expect(page.locator("#voice-status")).toContainText("已连接");
   return {
     sent,
+    event(event) { socket.send(JSON.stringify(event)); },
     audio(buffer) { socket.send(JSON.stringify({ type: "session.output_audio.delta", delta: buffer.toString("base64") })); },
     speak() {
       socket.send(JSON.stringify({ type: "session.output_transcript.delta", delta: "Hello! 你好！", start_ms: 0, end_ms: 1000 }));
@@ -107,6 +108,36 @@ test("continuous quiet packets cannot animate the mouth; speech resumes after si
   expect(await page.evaluate(() => window.avatar.getFrame().performance)).toBeNull();
   voice.audio(pcm);
   await expect.poll(() => page.evaluate(() => window.avatar.getFrame().performance?.weight ?? 0)).toBeGreaterThan(.8);
+  await page.locator("#voice-stop").click();
+});
+
+test("sad delivery survives fragmented text, reaches the speaking avatar and settles after the phrase", async ({ page }) => {
+  const requests = [];
+  await page.route("**/api/voice/emotion", route => {
+    requests.push(route.request().postDataJSON());
+    return route.fulfill({ json: { emotion: "sad", intensity: .65, confidence: .98, inferenceMs: 80 } });
+  });
+  const voice = await setup(page);
+  await page.locator("#idle-motion").uncheck();
+  await page.locator("#auto-blink").uncheck();
+  voice.event({type:"session.input_transcript.delta",delta:"我失去了好朋友。",start_ms:0,end_ms:0});
+  voice.event({type:"session.output_transcript.delta",delta:"听到这个消息，我很难过。",start_ms:0,end_ms:500});
+  voice.audio(pcm);
+  await expect.poll(()=>requests.length).toBe(1);
+  voice.event({type:"session.output_transcript.delta",delta:"我在这里陪着",start_ms:500,end_ms:700});
+  voice.event({type:"session.output_transcript.delta",delta:"你。",start_ms:700,end_ms:1000});
+  await expect.poll(()=>requests.length).toBe(2);
+  expect(requests[1].text).toBe("听到这个消息，我很难过。我在这里陪着你。");
+  expect(requests[1].currentText).toBe("我在这里陪着你。");
+  expect(requests[1].context).toContainEqual({role:"user",text:"我失去了好朋友。"});
+  await expect.poll(()=>page.evaluate(()=>{
+    const frame=window.avatar.getFrame();
+    return frame.expression.state === "sad" && frame.expression.intensity > .5 && frame.performance?.weight > .8;
+  })).toBe(true);
+  await expect(page.locator("#emotion-badge")).toHaveText("sad");
+  await expect(page.locator("#voice-metrics")).toContainText("JEV 判定 sad（置信度 0.98）");
+  await page.locator("#stage").screenshot({path:"test-results/voice-sad-speaking.png"});
+  await expect.poll(()=>page.evaluate(()=>window.avatar.getState().emotion),{timeout:4000}).toBe("neutral");
   await page.locator("#voice-stop").click();
 });
 

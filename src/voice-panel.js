@@ -45,7 +45,7 @@ export class VoicePanel {
       onMetrics: update => {
         Object.assign(this.metrics, update);
         const m = this.metrics;
-        this.$("voice-metrics").textContent = `情绪 ${m.emotion ?? "—"} · JEV ${m.inferenceMs ?? "—"} ms · 嘴形 ${m.mouthMs ?? "—"} ms · 情绪应用偏移 ${m.lateMs ?? "—"} ms（估计）`;
+        this.$("voice-metrics").textContent = `JEV 判定 ${m.prediction ?? "—"}（置信度 ${m.predictionConfidence?.toFixed(2) ?? "—"}） · 当前情绪 ${m.emotion ?? "—"} · 强度 ${m.intensity?.toFixed(2) ?? "—"} · JEV ${m.inferenceMs ?? "—"} ms · 嘴形 ${m.mouthMs ?? "—"} ms · 情绪应用偏移 ${m.lateMs ?? "—"} ms（估计）`;
       },
     });
     this.$("voice-buffer").oninput = e => { this.$("voice-buffer-value").textContent = e.target.value + " ms"; };
