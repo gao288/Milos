@@ -93,6 +93,7 @@ export function createVoiceServer({ env = process.env, connect = (url, options) 
       if (!started || closing || upstream.readyState !== WebSocket.OPEN) return;
       if (event.type === "bridge.interrupt") {
         upstream.send(JSON.stringify({ type: "session.instructions.append",
+          delegation_id: null,
           content: "The user interrupted playback. Stop speaking now and listen. Wait for their next input before replying." }));
         return;
       }

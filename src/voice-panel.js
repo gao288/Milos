@@ -23,7 +23,7 @@ export class VoicePanel {
         <details><summary>连接与同步状态</summary>
           <p class="helper" id="voice-config">GPT-Live · JEV · UniTalker</p>
           <p class="helper" id="voice-metrics">情绪每 500 ms 检查新增文本；无新文本时保持。</p>
-          <p class="helper">字幕按近似片段时间对齐。实际语音同步尚待 API key 联调；本地 Codex 委派为 P1。</p>
+          <p class="helper">字幕按近似片段时间对齐；同步效果受网络和播放缓冲影响。本地 Codex 委派为 P1。</p>
         </details>
       </section>`);
     this.$ = id => document.getElementById(id);

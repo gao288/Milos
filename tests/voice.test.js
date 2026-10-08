@@ -101,6 +101,7 @@ test("bridge relays audio, refuses arbitrary commands, and gracefully closes ups
   await once(client, "message");
   assert.equal(messages.filter(e => e.type === "session.instructions.append").length, 1);
   assert.match(messages.find(e => e.type === "session.instructions.append").content, /Stop speaking/);
+  assert.equal(messages.find(e => e.type === "session.instructions.append").delegation_id, null);
   const ended = once(client, "close"); client.send(JSON.stringify({ type: "session.close" })); await ended;
   assert.equal(closed, true);
 });

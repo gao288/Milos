@@ -11,6 +11,7 @@ async function setup(page) {
       const context = new AudioContext({ sampleRate: 16000 });
       const dest = context.createMediaStreamDestination();
       window.fixtureMicContext = context;
+      window.fixtureMicDestination = dest;
       return dest.stream;
     };
   });
@@ -21,9 +22,10 @@ async function setup(page) {
     frames: Array.from({ length: 30 }, (_, i) => ({ timeMs: i * 1000 / 30, weights: { jawOpen: 0.7, mouthUpperUpLeft: 0.4 } })),
   } }));
   let socket;
+  const sent = [];
   await page.routeWebSocket("**/api/voice/live?*", ws => {
     socket = ws;
-    ws.onMessage(data => { if (JSON.parse(data).type === "session.close") { ws.send(JSON.stringify({ type: "session.closed" })); ws.close(); } });
+    ws.onMessage(data => { const event = JSON.parse(data); sent.push(event.type); if (event.type === "session.close") { ws.send(JSON.stringify({ type: "session.closed" })); ws.close(); } });
     ws.send(JSON.stringify({ type: "session.started", session: { id: "fixture" } }));
   });
   await page.goto("/?character=follow");
@@ -31,6 +33,7 @@ async function setup(page) {
   await page.locator("#voice-start").click();
   await expect(page.locator("#voice-status")).toContainText("已连接");
   return {
+    sent,
     speak() {
       socket.send(JSON.stringify({ type: "session.output_transcript.delta", delta: "Hello! 你好！", start_ms: 0, end_ms: 1000 }));
       socket.send(JSON.stringify({ type: "session.output_audio.delta", delta: pcm.toString("base64") }));
@@ -46,6 +49,21 @@ test("missing OpenAI key explains setup without opening the microphone", async (
   await expect(page.locator("#voice-status")).toContainText("OPENAI_API_KEY");
   await expect(page.locator("#voice-start")).toBeEnabled();
   await expect(page.locator("#voice-stop")).toBeDisabled();
+});
+
+test("user speech during a quiet turn does not send a stop-speaking instruction", async ({ page }) => {
+  const voice = await setup(page);
+  await page.evaluate(async () => {
+    const context = window.fixtureMicContext;
+    await context.resume();
+    const tone = context.createOscillator();
+    tone.connect(window.fixtureMicDestination); tone.start(); tone.stop(context.currentTime + 0.5);
+  });
+  await page.waitForTimeout(700);
+  expect(voice.sent.filter(v => v === "session.input_audio.append").length).toBeGreaterThan(10);
+  expect(voice.sent).not.toContain("bridge.interrupt");
+  await expect(page.locator("#voice-stop")).toBeEnabled();
+  await page.locator("#voice-stop").click();
 });
 
 test("captions, JEV and model mouth wait for playback; stopping releases the avatar", async ({ page }) => {

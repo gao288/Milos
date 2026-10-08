@@ -61,7 +61,10 @@ export class VoiceController {
         const rms = Math.sqrt(data.reduce((sum, v) => sum + v * v, 0) / data.length);
         this.inputLevel = rms;
         this.speechMs = rms > 0.035 ? this.speechMs + 20 : 0;
-        if (this.speechMs === 180) this.interrupt(true);
+        // Live streams silent output packets while listening. Only interrupt
+        // audible speech, not every phrase the user says during a quiet turn.
+        if (this.speechMs === 180 && this.map.slots.some(slot => slot.audible && slot.end > context.currentTime))
+          this.interrupt(true);
         if (rms > 0.035) this.quietUntil = context.currentTime + 0.25;
         if (socket.bufferedAmount < 128000) socket.send(JSON.stringify({ type: "session.input_audio.append", audio: pcmEncode(data) }));
         else { this.stop(); this.onStatus("语音上传拥塞，已断开以避免累积延迟", true); }
@@ -200,7 +203,9 @@ export class VoiceController {
   }
   interrupt(fromMic = false) {
     if (!this.map) return;
-    if (this.socket?.readyState === WebSocket.OPEN) this.socket.send(JSON.stringify({ type: "bridge.interrupt" }));
+    // Mic barge-in is handled by Live's full-duplex audio understanding. A
+    // persistent "wait for next input" instruction would suppress its reply.
+    if (!fromMic && this.socket?.readyState === WebSocket.OPEN) this.socket.send(JSON.stringify({ type: "bridge.interrupt" }));
     this.dropAudioUntil = this.context.currentTime + 0.3;
     this.bargeActive = fromMic;
     for (const s of this.sources) s.stop(); this.sources.clear(); this.map.clear();
