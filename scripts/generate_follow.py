@@ -139,13 +139,16 @@ for index,(eye_id,x) in enumerate([('1:5477',-47.596497),('1:5480',50.093506)]):
     blink.remove(eye);pupil_pose.append(eye)
     upper,uv=path(blink,side+' upper eyelid',[(-29,0),(0,-3),(29,0)],thickness=6)
     lower,lv=path(blink,side+' lower eyelid',[(-27,14),(0,21),(27,14)],thickness=4)
-    aperture,av=path(blink,side+' eye opening',[(-33,0),(0,-3),(33,0),(33,30),(0,34),(-33,30)],closed=True,color='FFFFFFFF',thickness=0)
-    el(pupil_ink,'ClippingShape',sourceId=aperture.get('id'),isVisible='false')
+    aperture,av=path(blink,side+' eye opening',[(-33,0),(0,-3),(33,0),(33,30),(0,34),(-33,30)],closed=True,thickness=0)
+    serial += 2  # Retire the old Fill/SolidColor IDs; keep subsequent rig IDs stable.
+    # A clipping source must have no paint. ClippingShape.isVisible does not
+    # suppress its Fill; a painted source would flash across the face outline.
+    el(pupil_ink,'ClippingShape',sourceId=aperture.get('id'))
     # Preserve the face silhouette at extreme turns.
     for lid in [upper,lower]:el(lid,'ClippingShape',sourceId='1:5516')
     glint,_=ellipse(eye,side+' pupil highlight',-2,-3,5,5,'FFFFFFFF')
     eye.remove(glint);eye.insert(0,glint)
-    el(glint,'ClippingShape',sourceId=aperture.get('id'),isVisible='false')
+    el(glint,'ClippingShape',sourceId=aperture.get('id'))
     eye_rigs.append((pupil_pose,upper,uv,lower,lv,av,glint))
     brow_origin=el(face,'Node',name=side+' brow anchor',x=x,y=-80)
     brow=el(brow_origin,'Node',name=side+' emotional brow');brows.append(brow)

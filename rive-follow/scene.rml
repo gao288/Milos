@@ -406,7 +406,7 @@
                                                                 <Fill id="9:20318">
                                                                     <SolidColor colorValue="FFFFFFFF" id="9:20319" />
                                                                 </Fill>
-                                                                <ClippingShape sourceId="9:20303" isVisible="false" id="9:20320" />
+                                                                <ClippingShape sourceId="9:20303" id="9:20320" />
                                                             </Shape>
                                                             <Shape name="Left pupil ink" id="9:20281">
                                                                 <PointsPath isClosed="true" id="1:5638">
@@ -418,7 +418,7 @@
                                                                 <Fill id="1:5574">
                                                                     <SolidColor colorValue="FF000000" id="1:5479" />
                                                                 </Fill>
-                                                                <ClippingShape sourceId="9:20303" isVisible="false" id="9:20313" />
+                                                                <ClippingShape sourceId="9:20303" id="9:20313" />
                                                             </Shape>
                                                         </Node>
                                                     </Node>
@@ -453,9 +453,6 @@
                                                             <CubicDetachedVertex x="0" y="34" inRotation="-0.0" outRotation="3.141592653589793" inDistance="11.0" outDistance="11.0" id="9:20309" />
                                                             <CubicDetachedVertex x="-33" y="30" inRotation="0.8003224283875333" outRotation="-2.34127022520226" inDistance="7.896905160321423" outDistance="7.896905160321423" id="9:20310" />
                                                         </PointsPath>
-                                                        <Fill id="9:20311">
-                                                            <SolidColor colorValue="FFFFFFFF" id="9:20312" />
-                                                        </Fill>
                                                     </Shape>
                                                 </Node>
                                             </Node>
@@ -506,7 +503,7 @@
                                                                 <Fill id="9:20379">
                                                                     <SolidColor colorValue="FFFFFFFF" id="9:20380" />
                                                                 </Fill>
-                                                                <ClippingShape sourceId="9:20364" isVisible="false" id="9:20381" />
+                                                                <ClippingShape sourceId="9:20364" id="9:20381" />
                                                             </Shape>
                                                             <Shape name="Right pupil ink" id="9:20342">
                                                                 <PointsPath isClosed="true" id="1:5481">
@@ -518,7 +515,7 @@
                                                                 <Fill id="1:5575">
                                                                     <SolidColor colorValue="FF000000" id="1:5486" />
                                                                 </Fill>
-                                                                <ClippingShape sourceId="9:20364" isVisible="false" id="9:20374" />
+                                                                <ClippingShape sourceId="9:20364" id="9:20374" />
                                                             </Shape>
                                                         </Node>
                                                     </Node>
@@ -553,9 +550,6 @@
                                                             <CubicDetachedVertex x="0" y="34" inRotation="-0.0" outRotation="3.141592653589793" inDistance="11.0" outDistance="11.0" id="9:20370" />
                                                             <CubicDetachedVertex x="-33" y="30" inRotation="0.8003224283875333" outRotation="-2.34127022520226" inDistance="7.896905160321423" outDistance="7.896905160321423" id="9:20371" />
                                                         </PointsPath>
-                                                        <Fill id="9:20372">
-                                                            <SolidColor colorValue="FFFFFFFF" id="9:20373" />
-                                                        </Fill>
                                                     </Shape>
                                                 </Node>
                                             </Node>

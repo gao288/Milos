@@ -201,3 +201,39 @@ test('V2 fear reaches native rendering and Classic swaps preserve continuous art
   }
   expect(errors).toEqual([]);
 });
+
+test('blinking never paints white outside the cheek silhouette', async ({page}) => {
+  await page.goto('/?character=follow');
+  await page.waitForFunction(()=>window.avatar?.getState().ready);
+  await page.evaluate(async()=>{
+    const { RiveAdapter }=await import('/src/adapters/rive.js');
+    const { interactiveFollow }=await import('/src/characters/interactive-follow.js');
+    const { DEFAULT_CONTRACT }=await import('/src/framework/index.js');
+    const host=document.createElement('div');host.id='blink-probe';
+    host.style.cssText='position:fixed;left:0;top:0;width:600px;height:600px;background:#d6ddd0;z-index:999';
+    document.body.append(host);
+    const adapter=new RiveAdapter(interactiveFollow);
+    await adapter.mount(host,DEFAULT_CONTRACT);adapter.canvas.style.visibility='visible';
+    adapter.rive.viewModelInstance.number('nativeBlink').value=0;
+    window.blinkProbe=adapter;
+  });
+  await page.waitForTimeout(600);
+  for(const openness of [1,.5,.1,0,1]) {
+    await page.evaluate(value=>window.blinkProbe.rive.viewModelInstance.number('eyeOpen').value=value,openness);
+    await page.waitForTimeout(80);
+    const capture=(await page.locator('#blink-probe').screenshot()).toString('base64');
+    const whitePixels=await page.evaluate(async data=>{
+      const img=new Image();img.src='data:image/png;base64,'+data;await img.decode();
+      const canvas=document.createElement('canvas');canvas.width=600;canvas.height=600;
+      const c=canvas.getContext('2d');c.drawImage(img,0,0);
+      // Inside the left lens, immediately outside the face's black outline.
+      // The former painted mask covered this background patch when eyes opened.
+      const pixels=c.getImageData(222,267,4,12).data;
+      let white=0;
+      for(let i=0;i<pixels.length;i+=4) if(pixels[i]>245&&pixels[i+1]>245&&pixels[i+2]>245) white++;
+      return white;
+    },capture);
+    expect(whitePixels,`eyeOpen=${openness}`).toBe(0);
+  }
+  await page.evaluate(()=>{window.blinkProbe.dispose();document.querySelector('#blink-probe').remove();});
+});
