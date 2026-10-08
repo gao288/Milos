@@ -9,8 +9,8 @@ import { emotionWindow, rememberSpeech } from "./emotion-context.js";
  * timestamps: session/audio alignment is an estimate, never a word-sync claim.
  */
 export class VoiceController {
-  constructor({ avatar, onStatus, onTranscript, onMetrics, onActive }) {
-    Object.assign(this, { avatar, onStatus, onTranscript, onMetrics, onActive });
+  constructor({ avatar, onStatus, onTranscript, onMetrics, onActive, onEmotionResult = () => {} }) {
+    Object.assign(this, { avatar, onStatus, onTranscript, onMetrics, onActive, onEmotionResult });
     this.generation = 0; this.sources = new Set(); this.active = false;
     this.model = new LocalAudioModelProvider();
   }
@@ -187,6 +187,7 @@ export class VoiceController {
       });
       const data = await response.json(); if (!response.ok) throw Error(data.error || `JEV HTTP ${response.status}`);
       if (generation !== this.generation || epoch !== this.emotions.epoch) return;
+      this.onEmotionResult({ result: data, text: window.text, currentText: window.currentText, receivedAt: Date.now() });
       this.emotions.add({ ...data, at: this.sessionOrigin + window.startMs / 1000 + this.map.delay,
         until: this.sessionOrigin + latest.endMs / 1000 + this.map.delay + 0.6 }, epoch);
       this.onMetrics({ prediction: data.emotion, predictionConfidence: data.confidence, inferenceMs: data.inferenceMs });

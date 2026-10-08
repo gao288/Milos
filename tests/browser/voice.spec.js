@@ -78,6 +78,11 @@ test("captions, JEV and model mouth wait for playback; stopping releases the ava
   expect(await page.evaluate(() => window.avatar.getState().emotion)).toBe("neutral");
   await expect(page.locator("#voice-assistant")).not.toContainText("Hello!");
   await expect.poll(() => page.evaluate(() => window.avatar.getState().emotion)).toBe("happy");
+  await expect(page.locator("#jev-prediction")).toHaveText("开心 · happy");
+  await expect(page.locator("#jev-strength")).toHaveText("0.80 / 0.95");
+  await expect(page.locator("#jev-tilt")).toHaveText("0.30 / 0.90");
+  await expect(page.locator("#jev-gesture")).toHaveText("点头 / 0.90");
+  await expect(page.locator("[data-jev-emotion].active")).toHaveAttribute("data-jev-emotion", "happy");
   await expect(page.locator("#voice-assistant")).toHaveText("Hello! 你好！");
   await expect.poll(() => page.evaluate(() => window.avatar.getFrame().performance?.weights.jawOpen)).toBe(0.7);
   await expect.poll(() => page.evaluate(() => window.avatar.getFrame().motion.headTilt)).toBeGreaterThan(.1);
@@ -87,6 +92,32 @@ test("captions, JEV and model mouth wait for playback; stopping releases the ava
   expect(await page.evaluate(() => window.avatar.getState().behavior)).toBe("idle");
   await expect(page.locator("#voice-start")).toBeEnabled();
   expect(errors).toEqual([]);
+});
+
+test("JEV inspector shows rejected model output separately from applied animation and clears for a new session", async ({ page }) => {
+  const result = { emotion: "sad", intensity: .7, confidence: .2, inferenceMs: 91,
+    model: "jev-1.13.0", answers: {emotion:{type:"choice",choice:"sad",confidence:.2},intensity:{type:"score",score:2.8}} };
+  await page.route("**/api/voice/emotion", route => route.fulfill({json:result}));
+  const voice = await setup(page); voice.speak();
+  await expect(page.locator("#jev-prediction")).toHaveText("悲伤 / 关切 · sad");
+  await expect(page.locator("[data-jev-emotion]")).toHaveCount(6);
+  await expect(page.locator("#jev-strength")).toHaveText("0.70 / 0.20");
+  await page.locator(".jev-output summary").click();
+  expect(JSON.parse(await page.locator("#jev-json").textContent())).toEqual(result);
+  await expect(page.locator("#jev-input")).toHaveText("Hello! 你好！");
+  await page.waitForTimeout(1100);
+  expect(await page.evaluate(()=>window.avatar.getState().emotion)).toBe("neutral");
+  await expect(page.locator("#jev-applied")).not.toContainText("sad");
+  await page.setViewportSize({width:390,height:844});
+  await page.locator(".jev-output").scrollIntoViewIfNeeded();
+  expect(await page.evaluate(()=>document.documentElement.scrollWidth <= innerWidth)).toBe(true);
+  await page.locator(".jev-output").screenshot({path:"test-results/jev-inspector-mobile.png"});
+  await page.locator("#voice-stop").click();
+  await expect(page.locator("#jev-applied")).toHaveText("语音已停止");
+  await page.locator("#voice-start").click();
+  await expect(page.locator("#jev-json")).toHaveText("尚未收到结果");
+  await expect(page.locator("[data-jev-emotion].active")).toHaveCount(0);
+  await page.locator("#voice-stop").click();
 });
 
 test("continuous quiet packets cannot animate the mouth; speech resumes after silence", async ({ page }) => {

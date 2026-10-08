@@ -47,6 +47,7 @@ const answer = { model: "jev-1.13.0", answers: { emotion: { type: "choice", choi
 test("JEV scores normalize separately from confidence and reject bad output", async () => {
   const result = decodeEmotion(answer);
   assert.equal(result.intensity, 0.8); assert.equal(result.confidence, 0.9);
+  assert.deepEqual(result.answers, answer.answers);
   assert.equal(emotionRequest({ text: "你好" }).model, "jev-1.13.0");
   assert.throws(() => emotionRequest({ text: "" }));
   assert.throws(() => decodeEmotion({ ...answer, answers: { ...answer.answers, intensity: { type: "score", score: 40 } } }));

@@ -36,6 +36,8 @@ export function decodeEmotion(data) {
   if (gesture && (gesture.type !== "choice" || !["none", "nod", "shake"].includes(gesture.choice) || !confidence(gesture.confidence)))
     throw Error("Invalid JEV gesture");
   return { emotion: e.choice, intensity: i.score / 4, confidence: e.confidence, model: data.model,
+    // Only the four requested answers; never forward transport headers or credentials.
+    answers: { emotion: e, intensity: i, ...(tilt ? { headTilt: tilt } : {}), ...(gesture ? { gesture } : {}) },
     ...(tilt ? { motion: { headTilt: (tilt.score - 2) * 0.15 }, motionConfidence: tilt.confidence } : {}),
     ...(gesture ? { gesture: gesture.choice, gestureConfidence: gesture.confidence } : {}),
   };
