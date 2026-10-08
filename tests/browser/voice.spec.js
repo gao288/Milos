@@ -1,10 +1,11 @@
 import { test, expect } from "@playwright/test";
+import { encodeWav } from "../../src/providers/audio-model.js";
 
 const health = { openaiConfigured: true, jevConfigured: true, token: "test-session", liveModel: "gpt-live-1", jevModel: "jev-1.13.0" };
 const pcm = Buffer.alloc(32000);
 for (let i = 0; i < 16000; i++) pcm.writeInt16LE(Math.round(3000 * Math.sin(i * 0.08)), i * 2);
 
-async function setup(page) {
+async function setup(page, { output = "live" } = {}) {
   // A silent microphone exercises the worklet without synthetic-device barge-in.
   await page.addInitScript(() => {
     navigator.mediaDevices.getUserMedia = async () => {
@@ -15,7 +16,7 @@ async function setup(page) {
       return dest.stream;
     };
   });
-  await page.route("**/api/voice/health", route => route.fulfill({ json: health }));
+  await page.route("**/api/voice/health", route => route.fulfill({ json: { ...health, elevenConfigured: true, elevenModel: "eleven_v4_turbo" } }));
   await page.route("**/api/model/health", route => route.fulfill({ json: { loaded: true } }));
   await page.route("**/api/model/infer", route => route.fulfill({ json: {
     schema: "arkit-52-v1", durationMs: 1000, inferenceMs: 20,
@@ -30,6 +31,7 @@ async function setup(page) {
   });
   await page.goto("/?character=follow");
   await page.waitForFunction(() => window.avatar?.getState().ready);
+  if (output === "eleven") await page.locator("#voice-output-eleven").click();
   await page.locator("#voice-start").click();
   await expect(page.locator("#voice-status")).toContainText("已连接");
   return {
@@ -188,4 +190,53 @@ test("barge-in discards a late emotion result and queued audio without ending th
   await expect(page.locator("#voice-stop")).toBeEnabled();
   await expect(page.locator("#voice-assistant")).not.toContainText("Hello!");
   await page.locator("#voice-stop").click();
+});
+
+test('ElevenLabs selection explains missing configuration before requesting the microphone',async({page})=>{
+ await page.route('**/api/voice/health',route=>route.fulfill({json:{...health,elevenConfigured:false}}));
+ await page.goto('/');
+ await page.locator('#voice-output-eleven').click();
+ await expect(page.locator('#voice-output-note')).toContainText('ELEVENLABS_API_KEY');
+ await page.locator('#voice-start').click();
+ await expect(page.locator('#voice-status')).toContainText('ELEVENLABS_VOICE_ID');
+ await expect(page.locator('#voice-output-live')).toBeEnabled();
+ await page.locator('#voice-output-live').click();
+ await expect(page.locator('#voice-output-live')).toHaveAttribute('aria-pressed','true');
+});
+
+const replacementAudio=Buffer.from(await encodeWav(Float32Array.from({length:16000},(_,i)=>Math.sin(i*.08)*.15)).arrayBuffer()).toString('base64');
+
+test('ElevenLabs plays replacement audio with aligned captions, JEV and mouth while original Live audio stays muted',async({page})=>{
+ let release;const gate=new Promise(resolve=>{release=resolve;});
+ await page.route('**/api/voice/eleven',async route=>{await gate;await route.fulfill({json:{audio:replacementAudio,format:'wav',synthesisMs:150,emotion:{emotion:'sad',intensity:.7,confidence:.99,inferenceMs:80}}});});
+ const errors=[];page.on('pageerror',e=>errors.push(e.message));
+ const voice=await setup(page,{output:'eleven'});
+ const request=page.waitForRequest('**/api/voice/eleven');voice.speak();await request;
+ await expect(page.locator('#voice-output-live')).toBeDisabled();
+ await page.waitForTimeout(1200);
+ expect(await page.evaluate(()=>window.avatar.getState().behavior)).toBe('listening');
+ expect(await page.evaluate(()=>window.avatar.getFrame().performance)).toBeNull();
+ await expect(page.locator('#voice-assistant')).not.toContainText('Hello!');
+ release();
+ await expect(page.locator('#voice-assistant')).toHaveText('Hello! 你好！');
+ await expect.poll(()=>page.evaluate(()=>window.avatar.getFrame().expression.state)).toBe('sad');
+ await expect.poll(()=>page.evaluate(()=>window.avatar.getFrame().performance?.weight??0)).toBeGreaterThan(.8);
+ await page.locator('#voice-stop').click();
+ await page.locator('#voice-output-live').click();
+ await expect(page.locator('#voice-output-live')).toHaveAttribute('aria-pressed','true');
+ expect(errors).toEqual([]);
+});
+
+test('interrupting ElevenLabs synthesis discards late audio and emotion',async({page})=>{
+ let release;const gate=new Promise(resolve=>{release=resolve;});
+ await page.route('**/api/voice/eleven',async route=>{await gate;await route.fulfill({json:{audio:replacementAudio,emotion:{emotion:'angry',intensity:1,confidence:1}}}).catch(()=>{});});
+ const voice=await setup(page,{output:'eleven'});
+ const request=page.waitForRequest('**/api/voice/eleven');voice.speak();await request;
+ await page.locator('#voice-interrupt').click();release();
+ await page.waitForTimeout(1300);
+ expect(await page.evaluate(()=>window.avatar.getState().emotion)).toBe('neutral');
+ expect(await page.evaluate(()=>window.avatar.getFrame().performance)).toBeNull();
+ await expect(page.locator('#voice-assistant')).not.toContainText('Hello!');
+ await expect(page.locator('#voice-stop')).toBeEnabled();
+ await page.locator('#voice-stop').click();
 });

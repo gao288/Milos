@@ -1,0 +1,18 @@
+Use case: stylized-concept.
+Asset type: a single high resolution character expression design contact sheet for review before rigging in Rive.
+Input image: /tmp/realpet-idle-pose.png is a CHARACTER IDENTITY AND LINE ART REFERENCE only. Ignore all webpage UI, borders, badges and text. Preserve this exact charming male cartoon character: solid black scalloped curly hair, oversized round black-rimmed glasses, long simple nose, pale white face, long tapered neck/shoulder outline, clean bold black ink, no color fills except black and white. No hands or props.
+Primary request: create 12 dramatically DISTINCT, appealing, animation-ready head-and-neck expression variations of this same character on one beautifully organized 4 columns by 3 rows landscape contact sheet. White/off-white paper background, generous space, consistent head size, front or gentle 3/4 view, each bust fully contained. A tiny understated title 'FOLLOW / EXPRESSION STUDIES' at top. Each cell has a small clear English label below it, numbered 01 through 12.
+Rows:
+01 REST: relaxed asymmetric eyelids, soft neutral closed mouth.
+02 WARM SMILE: cheeks push up, visibly curved smiling eyes, slight head tilt, warm closed smile.
+03 BIG LAUGH: eyes squeezed into expressive crescents, raised cheeks, broad open laughing mouth, head gently back.
+04 CURIOUS: one brow much higher, one eye wider and other narrowed, tilted head, small questioning mouth.
+05 EMPATHY: unmistakably raised inner eyebrows and drooping outer brow ends, soft lower lids, gentle concerned mouth, head inclined.
+06 HEARTBROKEN: strongly lifted inner brows, heavy drooping upper lids, downward gaze, mouth corners pulled down, head bowed. No tears required.
+07 SURPRISED: high curved brows, round wide eyes, small pupils, round O mouth, upright head.
+08 AWE: wide sparkling attentive eyes using simple black/white shapes, high brows, delighted asymmetric open smile, head slightly forward.
+09 UNEASY: fearful anxious raised-and-pinched inner eyebrows, widened eyes with tense lower lids, small pupils looking sideways, tight hesitant mouth, neck slightly recoiling.
+10 TERRIFIED: extreme fear distinct from surprise: inward peaked eyebrows, dramatically wide eyes and tiny pupils, upper/lower lid tension, horizontally stretched open mouth with a simple upper teeth line, head and neck pulled back.
+11 ANNOYED: heavy half-lidded eyes, low slanted brows, side glance, one-sided compressed mouth.
+12 FURIOUS: sharply down-and-in brows, narrowed intense eyes, flared simple nostril line, compressed or clenched teeth mouth, head forward.
+Critical: eyes, eyelids, eyebrow ANGLES and SHAPES must change substantially between every cell; DO NOT make twelve identical wide round eyes with only mouth changes. Glasses retain their identity but lenses do not constrain the eyelids. Eye shapes can squash/stretch inside glasses. Fear must read clearly and differently from surprise. Keep cheek, head tilt, neck posture and asymmetry expressive. These are proposed stronger expression designs, not the current subtle rig. Maintain character likeness, hairstyle and glasses in every drawing. No photorealism, no 3D shading, no extra characters, no UI. Crisp professional hand-drawn animation model sheet.

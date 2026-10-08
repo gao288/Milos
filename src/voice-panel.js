@@ -11,6 +11,11 @@ export class VoicePanel {
       <section class="panel voice-panel" id="voice-panel">
         <div class="panel-head"><h2>和我聊聊</h2><span class="tag">LIVE VOICE</span></div>
         <p>中文或 English，直接开口。表情跟随正在说的话，嘴形跟随声音。</p>
+        <div class="voice-output-switch" role="group" aria-label="回复配音方式">
+          <button class="btn" id="voice-output-live" aria-pressed="true">GPT-Live 原声</button>
+          <button class="btn" id="voice-output-eleven" aria-pressed="false">ElevenLabs · 实验</button>
+        </div>
+        <p class="helper" id="voice-output-note">当前使用 GPT-Live 男声。结束聊天后可切换配音方式。</p>
         <div class="actions">
           <button class="btn primary" id="voice-start">开始语音聊天</button>
           <button class="btn" id="voice-stop" disabled>结束聊天</button>
@@ -54,11 +59,13 @@ export class VoicePanel {
     const transcripts = { user: "", assistant: "" };
     const times = { user: -Infinity, assistant: -Infinity };
     this.metrics = {};
+    this.output = "live";
     this.controller = new VoiceController({ avatar,
       onStatus: (text, error = false) => { this.$("voice-status").textContent = text; this.$("voice-status").classList.toggle("error", error); },
       onActive: active => {
         this.$("voice-start").disabled = active; this.$("voice-stop").disabled = !active;
         this.$("voice-interrupt").disabled = !active; this.$("voice-buffer").disabled = active;
+        this.$("voice-output-live").disabled = active; this.$("voice-output-eleven").disabled = active;
         this.$("jev-applied").textContent = active ? "等待表情随播放应用" : "语音已停止";
       },
       onEmotionResult: ({ result, text, currentText, receivedAt }) => {
@@ -88,6 +95,11 @@ export class VoicePanel {
       },
     });
     this.$("voice-buffer").oninput = e => { this.$("voice-buffer-value").textContent = e.target.value + " ms"; };
+    for (const mode of ["live", "eleven"]) this.$(`voice-output-${mode}`).onclick = () => {
+      this.output = mode;
+      for (const name of ["live", "eleven"]) this.$(`voice-output-${name}`).setAttribute("aria-pressed", String(name === mode));
+      this.updateOutputNote();
+    };
     this.$("voice-start").onclick = () => {
       transcripts.user = transcripts.assistant = ""; times.user = times.assistant = -Infinity;
       this.metrics = {};
@@ -97,7 +109,7 @@ export class VoicePanel {
       this.$("jev-json").textContent = "尚未收到结果";
       this.$("jev-fragment").textContent = "等待回复文本…";
       document.querySelectorAll("[data-jev-emotion]").forEach(el => el.classList.remove("active"));
-      return this.controller.start({ bufferMs: Number(this.$("voice-buffer").value) });
+      return this.controller.start({ bufferMs: Number(this.$("voice-buffer").value), output: this.output });
     };
     this.$("voice-stop").onclick = () => { this.stop(); this.$("voice-status").textContent = "聊天已结束"; };
     this.$("voice-interrupt").onclick = () => this.controller.interrupt();
@@ -107,11 +119,18 @@ export class VoicePanel {
   async refresh() {
     try {
       const config = await this.controller.health();
+      this.config = config; this.updateOutputNote();
       this.$("voice-config").textContent = `${config.liveModel} · ${config.jevModel} · 本地 Codex P1`;
       this.$("voice-status").textContent = config.openaiConfigured
         ? (config.jevConfigured ? "准备就绪，点击开始聊天" : "语音已配置；JEV key 尚未配置")
         : "等待 GPT-Live API key · JEV " + (config.jevConfigured ? "已配置" : "未配置");
     } catch { this.$("voice-status").textContent = "语音服务未启动 · 运行 npm run voice:serve"; }
+  }
+  updateOutputNote() {
+    this.$("voice-output-note").textContent = this.output === "live"
+      ? "当前使用 GPT-Live 男声。结束聊天后可切换配音方式。"
+      : "实验配音：GPT-Live 仍负责听懂与回复，ElevenLabs 按短句重新配音；会增加等待时间，两项服务均会计费。" +
+        (this.config?.elevenConfigured ? ` 当前模型：${this.config.elevenModel}。` : " 尚未配置 ElevenLabs：需要在本地 .env 填入 ELEVENLABS_API_KEY 和 ELEVENLABS_VOICE_ID，然后重启语音服务。");
   }
   stop() {
     if (!this.controller.active) return;

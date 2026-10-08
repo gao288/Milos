@@ -3,6 +3,7 @@ import { randomBytes } from "node:crypto";
 import { pathToFileURL } from "node:url";
 import WebSocket, { WebSocketServer } from "ws";
 import { inferEmotion, JEV_MODEL } from "./jev.mjs";
+import { synthesizeEleven, ELEVEN_MODEL } from "./eleven.mjs";
 
 export function liveConfig(env = process.env) {
   return { model: env.GPT_LIVE_MODEL || "gpt-live-1", audio: {
@@ -12,22 +13,24 @@ export function liveConfig(env = process.env) {
 }
 
 // A separate loopback bridge keeps credentials and provider logic out of Vite.
-export function createVoiceServer({ env = process.env, connect = (url, options) => new WebSocket(url, options), emotion = inferEmotion } = {}) {
+export function createVoiceServer({ env = process.env, connect = (url, options) => new WebSocket(url, options), emotion = inferEmotion, tts = synthesizeEleven } = {}) {
   const token = randomBytes(24).toString("hex");
   const clients = new Set();
-  let emotionBusy = false;
+  const busy = new Set();
   const json = (res, code, data) => { res.writeHead(code, { "Content-Type": "application/json", "Cache-Control": "no-store" }); res.end(JSON.stringify(data)); };
   const server = http.createServer(async (req, res) => {
     const url = new URL(req.url, "http://localhost");
     if (req.method === "GET" && url.pathname === "/api/voice/health") {
       return json(res, 200, { openaiConfigured: !!env.OPENAI_API_KEY, jevConfigured: !!(env.JEV_API_KEY || env.TYPESAFE_API_KEY),
-        liveModel: liveConfig(env).model, jevModel: env.JEV_MODEL || JEV_MODEL, token, delegation: "pending-p1" });
+        liveModel: liveConfig(env).model, jevModel: env.JEV_MODEL || JEV_MODEL,
+        elevenConfigured: !!(env.ELEVENLABS_API_KEY && env.ELEVENLABS_VOICE_ID), elevenModel: env.ELEVENLABS_MODEL || ELEVEN_MODEL,
+        token, delegation: "pending-p1" });
     }
     if (req.headers["x-realpet-token"] !== token) return json(res, 403, { error: "Invalid local session token" });
-    if (req.method !== "POST" || url.pathname !== "/api/voice/emotion") return json(res, 404, { error: "Not found" });
-    if (emotionBusy) return json(res, 429, { error: "Emotion request already running" });
+    if (req.method !== "POST" || !["/api/voice/emotion", "/api/voice/eleven"].includes(url.pathname)) return json(res, 404, { error: "Not found" });
+    if (busy.has(url.pathname)) return json(res, 429, { error: "Request already running" });
     if (!String(req.headers["content-type"]).startsWith("application/json")) return json(res, 415, { error: "Expected JSON" });
-    emotionBusy = true;
+    busy.add(url.pathname);
     const abort = new AbortController();
     res.on("close", () => { if (!res.writableEnded) abort.abort(); });
     try {
@@ -38,12 +41,14 @@ export function createVoiceServer({ env = process.env, connect = (url, options) 
       }
       let input;
       try { input = JSON.parse(body); } catch { return json(res, 400, { error: "Invalid JSON" }); }
-      const result = await emotion(input, { key: env.JEV_API_KEY || env.TYPESAFE_API_KEY, model: env.JEV_MODEL || JEV_MODEL, signal: abort.signal });
+      const result = url.pathname === "/api/voice/eleven"
+        ? await tts(input, { env, emotion, signal: abort.signal })
+        : await emotion(input, { key: env.JEV_API_KEY || env.TYPESAFE_API_KEY, model: env.JEV_MODEL || JEV_MODEL, signal: abort.signal });
       json(res, 200, result);
     } catch (error) {
-      const message = error.name === "TimeoutError" ? "JEV 请求超时" : error.message;
+      const message = error.name === "TimeoutError" ? "语音/情绪请求超时" : error.message;
       json(res, message.startsWith("Invalid") ? 400 : 502, { error: message });
-    } finally { emotionBusy = false; }
+    } finally { busy.delete(url.pathname); }
   });
   const sockets = new WebSocketServer({ noServer: true, maxPayload: 128 * 1024 });
   server.on("upgrade", (req, socket, head) => {

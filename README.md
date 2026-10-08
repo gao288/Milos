@@ -41,6 +41,16 @@ tailscale serve --bg --https=7443 http://127.0.0.1:5173
 - UniTalker 每约 500ms 推理一次，带 400ms 左侧上下文、最长保留两秒音频；不是重新训练的流式模型，没有完整右侧上下文。迟到帧丢弃，声音不中断；服务不可用时显示提示，嘴形回到休息。新链路不做元音检测。
 - 手动打断会清除排队音频、字幕及情绪，并以 `delegation_id: null` 的指令通知 GPT-Live 停止说话。麦克风连续约 180ms 超过能量阈值时，仅在助手有可听语音排队时清除本地播放；GPT-Live 自己处理双向语音打断，避免重复停止指令阻止正常回复。嘈杂环境与扬声器回声仍需实机调试。迟到推理不能恢复已打断的动作。切换角色可继续对话，启用其他输入模式会结束语音会话。
 
+语音面板新增 **GPT-Live 原声 / ElevenLabs · 实验** 按钮，结束会话后切换，再点击开始聊天。
+
+- ElevenLabs 模式保留 GPT-Live 的麦克风理解与回复文本，屏蔽其原声，将文本按短句重新合成为 ElevenLabs 声音；两个服务都会产生用量。这是分段配音实验，尚非独立的 ElevenLabs 对话代理，也不是音频直通替换。
+- 在 `.env` 配置 `ELEVENLABS_API_KEY`、`ELEVENLABS_VOICE_ID`，可选 `ELEVENLABS_MODEL`（默认 `eleven_v4_turbo`，也接受 `eleven_v4`、`eleven_v3`），重启语音服务。音色必须对该 key 可用；真实账号可用性和听感需要实测。缺少配置会在申请麦克风前提示。
+- 服务端 `/api/voice/eleven` 先用 JEV 判断本段情绪，高置信度时添加简短表演标签，再请求 ElevenLabs TTS。`sad` 使用轻度同情语气，不自动加入哭腔。标签是模型提示，遵循程度依赖音色；JEV 故障时沿用默认语气并提示。
+- 每个短句完整合成、解码后播放，嘴形使用同一替换音频推理；字幕和表情按新音频的播放时钟安排。此模式的 JEV 更新按短句进行，不保证每 500ms；需等待文本成句、JEV、TTS 和最多 1.8 秒嘴形准备，延迟高于原声模式。打断/停止会取消合成并丢弃旧结果；合成失败会停止会话，不偷偷播放另一种音色。
+- 单段文本最多 400 字符、音频最多 25 秒，队列有上限；key 仅在本地服务端使用。已用模拟音频验证切换、对齐及打断，尚未用真实 ElevenLabs 凭据试听。
+
+表情概念稿：`design/expression-studies/follow-v1.png`，12 个变体含不安与惊恐；生成提示保存在同目录 `.prompt.txt`，使用内置 imagegen。它是待审核的造型方向，尚未修改 Rive 或新增运行时 `fear` 状态。
+
 可替换组件：`server/jev.mjs`（情绪 provider）、`server/voice.mjs`（语音连接与 P1 委派占位）、`src/voice/controller.js`（编排）、`src/voice/timeline.js`（播放与动作时间线）。头像仍消费 `expression` 与 `arkit-52-v1`，不依赖供应商 API。
 
 本地接口：`GET /api/voice/health` 返回配置状态和本次服务的临时 token；`POST /api/voice/emotion` 需要 `X-Realpet-Token`；`WS /api/voice/live?token=…` 只转发受限的音频与控制事件。API key 不通过这些接口返回。

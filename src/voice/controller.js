@@ -3,6 +3,7 @@ import { PerformanceTimeline } from "../framework/performance.js";
 import { encodeWav, LocalAudioModelProvider } from "../providers/audio-model.js";
 import { SpeechEnvelope, pcmRms } from "./speech-envelope.js";
 import { emotionWindow, rememberSpeech } from "./emotion-context.js";
+import { ElevenOutput } from "./eleven-output.js";
 
 /** Voice, expression and mouth providers meet only at normalized avatar events.
  * Transcript timestamps are approximate session times. PCM packets have no
@@ -19,15 +20,18 @@ export class VoiceController {
     if (!response.ok) throw Error("请启动语音服务：npm run voice:serve");
     this.config = await response.json(); return this.config;
   }
-  async start({ bufferMs = 800 } = {}) {
+  async start({ bufferMs = 800, output = "live" } = {}) {
     this.stop();
     this.avatar.stop();
     const generation = ++this.generation;
     this.active = true; this.onActive(true); this.onStatus("正在连接语音…");
     try {
+      if (!["live", "eleven"].includes(output)) throw Error("未知配音模式");
+      this.output = output;
       const config = await this.health();
       if (generation !== this.generation) return;
       if (!config.openaiConfigured) throw Error("请在本地 .env 配置 OPENAI_API_KEY 后重启语音服务");
+      if (output === "eleven" && !config.elevenConfigured) throw Error("请在本地 .env 配置 ELEVENLABS_API_KEY 和 ELEVENLABS_VOICE_ID 后重启语音服务");
       if (!navigator.mediaDevices?.getUserMedia) throw Error("麦克风需要 HTTPS 或 localhost");
       const context = new AudioContext({ sampleRate: 16000 }); this.context = context;
       await context.resume();
@@ -47,6 +51,7 @@ export class VoiceController {
       this.envelope = new SpeechEnvelope();
       this.captions = []; this.history = []; this.fragments = []; this.emotions = new CueQueue();
       this.mouth = new PerformanceTimeline(); this.resetMouth();
+      this.eleven = output === "eleven" ? new ElevenOutput(this) : null;
       this.sessionOrigin = context.currentTime; this.started = false; this.inputLevel = 0; this.speechMs = 0;
       this.emotionBusy = false; this.lastEmotionEnd = -1; this.lastEmotionAt = -Infinity;
       this.installMouth();
@@ -66,7 +71,8 @@ export class VoiceController {
         this.speechMs = rms > 0.035 ? this.speechMs + 20 : 0;
         // Live streams silent output packets while listening. Only interrupt
         // audible speech, not every phrase the user says during a quiet turn.
-        if (this.speechMs === 180 && this.map.slots.some(slot => slot.audible && slot.end > context.currentTime))
+        if (this.speechMs === 180 && (this.map.slots.some(slot => slot.audible && slot.end > context.currentTime) ||
+          this.eleven?.busy || this.eleven?.queue.length || this.eleven?.pending))
           this.interrupt(true);
         if (rms > 0.035) this.quietUntil = context.currentTime + 0.25;
         if (socket.bufferedAmount < 128000) socket.send(JSON.stringify({ type: "session.input_audio.append", audio: pcmEncode(data) }));
@@ -90,6 +96,23 @@ export class VoiceController {
     } }, () => this.context.currentTime * 1000);
   }
   resetMouth() { this.pcm = new Float32Array(0); this.pcmStart = 0; this.inferredThrough = 0; this.lastMouthFrame = -1; this.mouthBusy = false; }
+  playPCM(samples, { infer = true, maxQueueSeconds = 5 } = {}) {
+    const now = this.context.currentTime;
+    const slot = this.map.append(samples.length, now);
+    slot.audible = pcmRms(samples) >= 0.008;
+    this.envelope.append(samples, slot.at);
+    if (slot.end - now > maxQueueSeconds) throw Error("播放队列过长，请结束并重连");
+    const buffer = this.context.createBuffer(1, samples.length, 16000); buffer.copyToChannel(samples, 0);
+    const source = this.context.createBufferSource(); source.buffer = buffer; source.connect(this.context.destination);
+    this.sources.add(source); source.onended = () => { this.sources.delete(source); source.disconnect(); };
+    source.start(slot.at);
+    if (infer) {
+      const merged = new Float32Array(this.pcm.length + samples.length); merged.set(this.pcm); merged.set(samples, this.pcm.length);
+      const trim = Math.max(0, merged.length - 32000); this.pcm = merged.slice(trim); this.pcmStart += trim;
+      this.inferMouth();
+    }
+    return slot;
+  }
   receive(event) {
     const now = this.context.currentTime;
     if (event.type === "session.started") {
@@ -97,26 +120,22 @@ export class VoiceController {
       this.avatar.dispatch({ type: "behavior", state: "listening" }); return;
     }
     if (event.type === "session.output_audio.delta") {
+      if (this.output === "eleven") return;
       if (now < (this.dropAudioUntil ?? 0) || (this.bargeActive && now < (this.quietUntil ?? 0))) return;
       this.bargeActive = false;
-      const samples = pcmDecode(event.delta);
-      const slot = this.map.append(samples.length, now);
-      slot.audible = pcmRms(samples) >= 0.008;
-      this.envelope.append(samples, slot.at);
-      if (slot.end - now > 5) throw Error("播放队列过长，请结束并重连");
-      const buffer = this.context.createBuffer(1, samples.length, 16000); buffer.copyToChannel(samples, 0);
-      const source = this.context.createBufferSource(); source.buffer = buffer; source.connect(this.context.destination);
-      this.sources.add(source); source.onended = () => { this.sources.delete(source); source.disconnect(); };
-      source.start(slot.at);
-      const merged = new Float32Array(this.pcm.length + samples.length); merged.set(this.pcm); merged.set(samples, this.pcm.length);
-      const trim = Math.max(0, merged.length - 32000); this.pcm = merged.slice(trim); this.pcmStart += trim;
-      this.inferMouth(); return;
+      this.playPCM(pcmDecode(event.delta)); return;
     }
     const fragment = transcriptFragment(event);
     if (fragment) {
       rememberSpeech(this.history, fragment);
       if (fragment.role === "user") this.onTranscript(fragment);
       else if (fragment.endMs >= (this.discardBeforeMs ?? 0)) {
+        if (this.eleven) {
+          if (now >= (this.dropAudioUntil ?? 0) && !(this.bargeActive && now < (this.quietUntil ?? 0))) {
+            this.bargeActive = false; this.eleven.push(fragment);
+          }
+          return;
+        }
         this.fragments.push(fragment); this.captions.push(fragment);
         this.fragments.sort((a, b) => a.startMs - b.startMs);
         this.captions.sort((a, b) => a.startMs - b.startMs);
@@ -135,6 +154,7 @@ export class VoiceController {
   tick() {
     if (!this.active || !this.context) return;
     const now = this.context.currentTime;
+    this.eleven?.tick(now);
     const transcriptClock = (now - this.sessionOrigin - this.map.delay) * 1000;
     // Do not reveal a caption until corresponding audio has at least started.
     // Allow late transcript fragments to update already spoken captions.
@@ -163,7 +183,7 @@ export class VoiceController {
     }
     const state = speaking ? "speaking" : "listening";
     if (this.started && state !== this.behavior) { this.avatar.dispatch({ type: "behavior", state }); this.behavior = state; }
-    this.inferEmotion();
+    if (!this.eleven) this.inferEmotion();
     // Send a final short tail even when packets stop before the next 500 ms block.
     this.inferMouth(true);
     if (this.mouth.frames.length > 300) this.mouth.frames = this.mouth.frames.filter(f => f.timeMs > now * 1000 - 1000);
@@ -226,6 +246,7 @@ export class VoiceController {
   }
   interrupt(fromMic = false) {
     if (!this.map) return;
+    this.eleven?.clear();
     // Mic barge-in is handled by Live's full-duplex audio understanding. A
     // persistent "wait for next input" instruction would suppress its reply.
     if (!fromMic && this.socket?.readyState === WebSocket.OPEN) this.socket.send(JSON.stringify({ type: "bridge.interrupt" }));
@@ -242,6 +263,7 @@ export class VoiceController {
   }
   stop() {
     const wasActive = this.active;
+    this.eleven?.clear(); this.eleven = null;
     ++this.generation; this.active = false; this.started = false; clearInterval(this.timer);
     this.emotionAbort?.abort(); this.mouthAbort?.abort();
     const socket = this.socket; this.socket = null;
