@@ -21,6 +21,7 @@ import { interactiveFollow } from "./characters/interactive-follow.js";
 import { MouthLab } from "./mouth-lab.js";
 import { AudioLab } from "./audio-lab.js";
 import { PerformanceTimeline } from "./framework/performance.js";
+import { VoicePanel } from "./voice-panel.js";
 const $ = (s) => document.querySelector(s);
 const icons = ["◡", "☺", "◠", "◔", "◎", "≋"];
 const labels = [
@@ -139,6 +140,7 @@ let loadAttempt = 0;
 let demoTimer = null;
 let audioLab = null;
 let mouthLab = null;
+let voicePanel = null;
 const characters = new Map([
   ["follow", { name: "Interactive Follow", create: () => new RiveAdapter(interactiveFollow) }],
   ["milo", { name: "Milo", create: () => new RiveAdapter(milo) }],
@@ -213,6 +215,7 @@ function stopAudio() {
   $("#mic").disabled = false;
 }
 function stop(options = {}) {
+  if (!options.keepVoice) voicePanel?.stop();
   if (!options.keepModel) audioLab?.stop();
   stopDemo();
   clearInterval(streamTimer);
@@ -392,6 +395,20 @@ audioLab = new AudioLab(runtime, {
   setBehavior, setSource,
 });
 mouthLab = new MouthLab(runtime, { stopAll: () => stop(), setSource });
+let voicePerformance = null;
+voicePanel = new VoicePanel({
+  stop: () => stop({ keepVoice: true }), dispatch,
+  setTimeline: (timeline, readTimeMs) => {
+    runtime.setPerformance(timeline, readTimeMs, { upperFaceWeight: 0 });
+    voicePerformance = runtime.performanceSource; setSource("live-voice");
+  },
+  clearTimeline: () => {
+    if (voicePerformance && runtime.performanceSource === voicePerformance) {
+      runtime.clearPerformance(); setBehavior("idle"); setSource("idle");
+    }
+    voicePerformance = null;
+  },
+});
 $("#character").onchange = (e) => {
   setCharacter(e.target.value).catch(() => {});
 };

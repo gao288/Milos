@@ -2,6 +2,33 @@
 
 可替换角色与动画引擎的框架，附带 Vite 演示页。Milo/Rive 和 Sprout/Canvas 是两个适配器示例，输入层与核心控制器不依赖特定模型。页面右侧可以实时切换两者，保留表情与嘴形。
 
+## GPT-Live 语音聊天与 JEV 情绪 v0.5
+
+页面「和我聊聊」已接好 GPT-Live WebSocket 桥接、麦克风采集、PCM 播放、流式字幕、JEV 情绪和 UniTalker 分块嘴形。
+**当前 GPT-Live API key 尚未提供：真实端到端语音会话未验证。** JEV 已用现有 testing key 实测，语音事件链路有模拟回归测试。本地 Codex harness 委派留作 P1，当前不会执行任务。
+
+在已有 `.env` 中补充 `OPENAI_API_KEY`，保留已有 `JEV_API_KEY`。变量名称参考 `.env.example`；不要覆盖现有文件。Key 只由本地服务读取，不进入网页或 Git。
+
+```sh
+npm run voice:serve  # 终端 1：127.0.0.1:8788，读取 .env（更改后重启）
+npm run model:serve  # 终端 2：127.0.0.1:8787，UniTalker 嘴形
+npm run dev         # 终端 3：页面与本地 HTTP/WebSocket 代理
+```
+
+- GPT-Live：默认 `gpt-live-1` / `marin`，双向 16 kHz PCM16；可用 `GPT_LIVE_MODEL` / `GPT_LIVE_VOICE` 配置。会话开始前不上传麦克风数据，结束时释放麦克风、音频队列及动画，并等待服务端关闭确认。
+- JEV：官方 `POST https://api.typesafe.ai/v1/systemone`，固定 `jev-1.13.0`（可用 `JEV_MODEL` 配置）。一次请求分别用 Choice 判断六种情绪、Score 判断强度。`score / 4` 才是强度，confidence 单独用于抑制低置信度切换。
+- 每 500ms 检查新增回复文本，附带最近对话上下文；最多一个 JEV 请求在途，没有新增文本时不重复收费调用。慢请求会降低实际更新频率；超时、失败或过期结果不会阻塞声音，失败后退避两秒。
+- 播放缓冲默认 **800ms**，可在连接前调为 200–1500ms。字幕和情绪保留 GPT-Live 的 `start_ms/end_ms`，以 AudioContext 时钟调度；嘴形按实际 PCM 样本对应的播放位置调度。音频与嘴形映射不依赖请求返回先后。
+- **同步限制：** 官方文本时间戳仅为近似片段时间；输出音频没有时间戳，也没有 audio-done 事件。当前以收到 session.started 时的音频时钟估算会话起点，不能消除传输延迟与服务端时钟偏差，不能保证逐字同步。需要真实 key 测量、校准。JEV 低于 500ms 也不等于端到端表情延迟低于 500ms。
+- UniTalker 每约 500ms 推理一次，带 400ms 左侧上下文、最长保留两秒音频；不是重新训练的流式模型，没有完整右侧上下文。迟到帧丢弃，声音不中断；服务不可用时显示提示，嘴形回到休息。新链路不做元音检测。
+- 手动打断或连续约 180ms 的本地能量检测会清除排队音频、字幕及情绪，并通知 GPT-Live 停止说话。能量阈值只是打断检测，嘈杂环境与扬声器回声仍需实机调试。迟到推理不能恢复已打断的动作。切换角色可继续对话，启用其他输入模式会结束语音会话。
+
+可替换组件：`server/jev.mjs`（情绪 provider）、`server/voice.mjs`（语音连接与 P1 委派占位）、`src/voice/controller.js`（编排）、`src/voice/timeline.js`（播放与动作时间线）。头像仍消费 `expression` 与 `arkit-52-v1`，不依赖供应商 API。
+
+本地接口：`GET /api/voice/health` 返回配置状态和本次服务的临时 token；`POST /api/voice/emotion` 需要 `X-Realpet-Token`；`WS /api/voice/live?token=…` 只转发受限的音频与控制事件。API key 不通过这些接口返回。
+
+官方参考：[GPT-Live WebSocket](https://developers.openai.com/api/docs/guides/voice-websockets)、[字幕与会话时间](https://developers.openai.com/api/docs/guides/live-conversations)、[JEV API](https://docs.typesafe.ai/api)、[JEV 模型](https://docs.typesafe.ai/models)。
+
 ## 音频驱动面部参数 v0.4
 
 新增 **真实 UniTalker ONNX 推理 → 带时间戳的面部曲线 → Rive / Canvas** 链路。
@@ -23,7 +50,7 @@ CPU 模式可用 `REALPET_MODEL_DEVICE=cpu npm run model:serve`。默认安装 G
 - 使用 **dlp3d-ai/audio2face 发布的 UniTalker v0.4.0 ONNX 检查点**，不是 NVIDIA Audio2Face，也没有重新训练模型。
 - 模型输出 51 通道；适配为 `arkit-52-v1` 命名协议，缺失的 `tongueOut` 为 0。这里采用 ARKit 风格名称和 0–1 权重，不能视为所有来源都已经完成相同标定。
 - **模型链路不做元音分类**。连续嘴形直接覆盖旧 viseme 的嘴部开合；只有静音幅度门限用于抑制无声时嘴部漂移。
-- 目前是**音频片段先推理、再同步播放**。已有追加曲线和外部音频时钟接口，但尚未接入流式 TTS 或实时麦克风模型推理。下方旧文本／麦克风面板仍是启发式备用路径。
+- 此音频实验面板是**音频片段先推理、再同步播放**；上方 v0.5 语音聊天另有分块嘴形链路。下方旧文本／麦克风面板仍是启发式备用路径。
 - 中英文示例用本地 eSpeak NG 合成，只用于验证输入、推理、同步链路，不代表真人语音或准确率评测。
 - Milo 映射嘴部开合、收圆、拉伸，以及部分眉眼／脸颊；Sprout 映射嘴部开合和宽度。Follow 也已映射连续嘴形及部分眉眼／脸颊；Classic 尚未映射模型输出。**角色不是完整的 52 通道 rig**，切换模型与角色仍需要对应适配。
 - 默认模型表情参与度为 0：模型控制发音，JEV 保留情绪意图。滑块可叠加模型眉眼和嘴角；模型固定 neutral conditioning，没有做语义情绪识别。
