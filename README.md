@@ -15,6 +15,20 @@ npm run model:serve  # 终端 2：127.0.0.1:8787，UniTalker 嘴形
 npm run dev         # 终端 3：页面与本地 HTTP/WebSocket 代理
 ```
 
+### 从另一台设备使用麦克风
+
+浏览器不会在远程 IP 的普通 HTTP 页面上提供麦克风接口。本机使用 `http://localhost:5173`；通过 Tailscale 访问时使用 HTTPS 域名入口。
+当前开发机已配置 `https://xufei-pc.tail110452.ts.net:7443/`，目标为本机 5173，访问设备需要连接到对应 Tailscale 网络。
+
+其他机器可以在 `.env` 设置 `REALPET_ALLOWED_HOSTS=机器的完整域名`（多个域名用逗号分隔），再启用反向代理：
+
+```sh
+tailscale serve --bg --https=7443 http://127.0.0.1:5173
+# 只关闭这个入口：tailscale serve --https=7443 off
+```
+
+使用命令返回的 HTTPS 链接，浏览器提示时允许麦克风。语音 WebSocket 自动使用同一入口的 WSS。
+
 - GPT-Live：默认 `gpt-live-1` / `marin`，双向 16 kHz PCM16；可用 `GPT_LIVE_MODEL` / `GPT_LIVE_VOICE` 配置。会话开始前不上传麦克风数据，结束时释放麦克风、音频队列及动画，并等待服务端关闭确认。
 - JEV：官方 `POST https://api.typesafe.ai/v1/systemone`，固定 `jev-1.13.0`（可用 `JEV_MODEL` 配置）。一次请求分别用 Choice 判断六种情绪、Score 判断强度。`score / 4` 才是强度，confidence 单独用于抑制低置信度切换。
 - 每 500ms 检查新增回复文本，附带最近对话上下文；最多一个 JEV 请求在途，没有新增文本时不重复收费调用。慢请求会降低实际更新频率；超时、失败或过期结果不会阻塞声音，失败后退避两秒。
