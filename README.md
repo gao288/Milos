@@ -8,9 +8,9 @@ Milos connects streaming speech, emotion inference, and continuous facial animat
 
 ## Demo
 
-[![Milos demo — click to watch the full video with sound](docs/assets/demo-preview.gif)](https://raw.githubusercontent.com/gao288/Milos/main/docs/assets/demo.mp4)
+[![Milos demo — click to watch the full video with sound](docs/assets/demo-preview.gif)](https://gao288.github.io/Milos/)
 
-**[Watch the full demo with sound (67 seconds)](https://raw.githubusercontent.com/gao288/Milos/main/docs/assets/demo.mp4)** · The preview above is a silent, 16-second excerpt.
+**[Watch the full demo with sound (67 seconds)](https://gao288.github.io/Milos/)** · The preview above is a silent, 16-second excerpt.
 
 ## Expressions
 

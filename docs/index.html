@@ -1,0 +1,40 @@
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <meta name="description" content="Watch Milos in action: expressive Rive avatars for real-time voice conversations.">
+  <title>Milos — Demo</title>
+  <style>
+    :root { color-scheme: dark; font-family: system-ui, sans-serif; background: #111b17; color: #f3f5ed; }
+    * { box-sizing: border-box; }
+    body { margin: 0; }
+    main { width: min(100% - 40px, 1000px); margin: 40px auto; }
+    header { display: flex; align-items: baseline; justify-content: space-between; gap: 20px; }
+    h1 { font-size: clamp(2rem, 5vw, 3rem); margin: 0; letter-spacing: -.04em; }
+    a { color: #d4e59a; text-underline-offset: .2em; }
+    a:focus-visible, video:focus-visible { outline: 3px solid #d4e59a; outline-offset: 5px; }
+    p { color: #b8c4ba; line-height: 1.6; }
+    video { display: block; width: 100%; max-height: 78vh; background: #080e0b; border-radius: 16px; margin-top: 24px; }
+    footer { margin-top: 20px; font-size: .85rem; }
+  </style>
+</head>
+<body>
+  <main>
+    <header>
+      <h1>Milos</h1>
+      <a href="https://github.com/gao288/Milos">View on GitHub ↗</a>
+    </header>
+    <p>An expressive avatar framework for real-time voice conversations.</p>
+    <video controls playsinline preload="metadata" poster="assets/demo-preview.gif" aria-label="Milos demonstration video">
+      <source src="assets/demo.mp4" type="video/mp4">
+      Your browser does not support this video. <a href="assets/demo.mp4">Download the demo</a>.
+    </video>
+    <p>Full demo · 67 seconds · Sound available. Press play to watch.</p>
+    <footer>
+      <p>Follow character adapted from <a href="https://rive.app/marketplace/28334-53514-interactive-character-follow/">Interactive Character Follow</a> by alinazari, licensed under <a href="https://creativecommons.org/licenses/by/4.0/">CC BY 4.0</a>.</p>
+      <a href="assets/demo.mp4" download>Download video</a>
+    </footer>
+  </main>
+</body>
+</html>
