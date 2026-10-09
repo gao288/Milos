@@ -14,6 +14,7 @@ export class VoicePanel {
         <div class="voice-output-switch" role="group" aria-label="回复配音方式">
           <button class="btn" id="voice-output-live" aria-pressed="true">GPT-Live 原声</button>
           <button class="btn" id="voice-output-eleven" aria-pressed="false">ElevenLabs · 实验</button>
+          <button class="btn" id="voice-output-engine" aria-pressed="false">Speech Engine · 实验</button>
         </div>
         <p class="helper" id="voice-output-note">当前使用 GPT-Live 男声。结束聊天后可切换配音方式。</p>
         <div class="actions">
@@ -66,6 +67,7 @@ export class VoicePanel {
         this.$("voice-start").disabled = active; this.$("voice-stop").disabled = !active;
         this.$("voice-interrupt").disabled = !active; this.$("voice-buffer").disabled = active;
         this.$("voice-output-live").disabled = active; this.$("voice-output-eleven").disabled = active;
+        this.$("voice-output-engine").disabled = active;
         this.$("jev-applied").textContent = active ? "等待表情随播放应用" : "语音已停止";
       },
       onEmotionResult: ({ result, text, currentText, receivedAt }) => {
@@ -95,9 +97,9 @@ export class VoicePanel {
       },
     });
     this.$("voice-buffer").oninput = e => { this.$("voice-buffer-value").textContent = e.target.value + " ms"; };
-    for (const mode of ["live", "eleven"]) this.$(`voice-output-${mode}`).onclick = () => {
+    for (const mode of ["live", "eleven", "engine"]) this.$(`voice-output-${mode}`).onclick = () => {
       this.output = mode;
-      for (const name of ["live", "eleven"]) this.$(`voice-output-${name}`).setAttribute("aria-pressed", String(name === mode));
+      for (const name of ["live", "eleven", "engine"]) this.$(`voice-output-${name}`).setAttribute("aria-pressed", String(name === mode));
       this.updateOutputNote();
     };
     this.$("voice-start").onclick = () => {
@@ -127,6 +129,12 @@ export class VoicePanel {
     } catch { this.$("voice-status").textContent = "语音服务未启动 · 运行 npm run voice:serve"; }
   }
   updateOutputNote() {
+    if (this.output === "engine") {
+      this.$("voice-output-note").textContent = "Speech Engine 负责听、说和语音打断；独立文本 LLM 流式回复，JEV 与嘴形跟随音频。" +
+        (this.config?.speechEngineConfigured ? ` 当前 LLM：${this.config.speechEngineModel}，Chris 男声。` : " 回调服务尚未配置。") +
+        "「打断播放」静音本轮回复；再次开口继续聊天。";
+      return;
+    }
     this.$("voice-output-note").textContent = this.output === "live"
       ? "当前使用 GPT-Live 男声。结束聊天后可切换配音方式。"
       : "实验配音：GPT-Live 仍负责听懂与回复，ElevenLabs 按短句重新配音；会增加等待时间，两项服务均会计费。" +

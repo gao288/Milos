@@ -51,6 +51,31 @@ tailscale serve --bg --https=7443 http://127.0.0.1:5173
 
 表情概念稿：`design/expression-studies/follow-v1.png`，12 个变体含不安与惊恐；生成提示保存在同目录 `.prompt.txt`，使用内置 imagegen。已据此实现 Follow V2 的原生眼睑、瞳孔、眉形、情绪嘴与头部姿态；运行时和 JEV 已加入 `fear`。这是保留原角色几何的动画改编，并非概念图的逐像素复刻。实际原生渲染对照图为 `design/expression-studies/follow-v2-rendered.png`，可运行 `node scripts/render-follow-studies.mjs` 重建。
 
+### Speech Engine 流式实验
+
+第三个按钮 **Speech Engine · 实验** 使用 ElevenLabs 识别、TTS 和轮次/语音打断，独立的 OpenAI Responses 文本流负责回复，不生成 GPT-Live 原声。默认 `gpt-5.6-luna`（reasoning none）→ `eleven_v4_turbo` / Chris；可在 .env 更换模型和识别语言（默认 zh）。中英混说的识别准确率仍需设备实测。
+
+- 私有的 `POST /api/voice/speech-engine` 需要本地 token，返回短期签名 URL。浏览器接收 ElevenLabs WebSocket 的 PCM16 / 16 kHz 音频，API key 不进入网页。
+- 字幕优先使用音频包的字符对齐；JEV 每 500ms 检查即将播放的新增文字，嘴形根据同一时钟滚动推理。缺少字符对齐时使用回复文本作为片段级备用，不保证逐字同步。
+- 合成可以快于播放：待播队列有一分钟上限，只将近期要播放的 PCM 送入 UniTalker，避免提前覆盖尚未播放的嘴形窗口。JEV 和嘴形都不阻塞语音。
+- 语音打断由 Speech Engine 处理，新 transcript 取消上一轮 LLM 请求；客户端清除待播音频、字幕、表情和过期事件。手动「打断播放」静音本轮，下一次用户开口恢复；结束聊天关闭连接并释放麦克风。
+- 独立端口 8789 只接受 `/speech-engine` WebSocket，官方 SDK 验证 ElevenLabs JWT；其他 HTTP 路径均为 404。需要公网 WSS 回调，不能填写 tailnet-only 页面地址。回调入口没有网页、健康检查、签名 URL 或密钥接口。
+- 实验资源不录音、一天后清理 transcript/PII，每次会话最多 10 分钟、并发 1。这不是零保留承诺；文字经过 OpenAI/JEV，语音经过 ElevenLabs，各服务均有用量。
+
+已有 .env 配好 ElevenLabs / OpenAI key 和 voice ID 后，在独立终端启动临时回调隧道：
+
+```sh
+cloudflared tunnel --config /dev/null --url http://127.0.0.1:8789 --no-autoupdate
+# 将返回的临时域名填入 .env：
+# SPEECH_ENGINE_CALLBACK_URL=wss://<临时域名>/speech-engine
+npm run speech-engine:setup
+npm run voice:serve
+```
+
+setup 首次创建资源，随后只更新 .env 指定的实验资源，将 ID/回调保存到被 Git 忽略的 .env。普通服务器重启不修改远端资源。临时隧道重建后域名会变，需要重新 setup；这不是常驻生产部署。网页仍使用原来的 Tailscale HTTPS 入口，不修改已有服务。
+
+实现：`server/speech-engine.mjs`（认证回调与流式 LLM）、`src/voice/speech-engine.js`（播放/对齐适配）、`scripts/setup-speech-engine.mjs`（资源配置）。官方参考：[Speech Engine quickstart](https://elevenlabs.io/docs/eleven-api/guides/cookbooks/speech-engine)、[WebSocket 事件](https://elevenlabs.io/docs/eleven-agents/libraries/web-sockets)。
+
 可替换组件：`server/jev.mjs`（情绪 provider）、`server/voice.mjs`（语音连接与 P1 委派占位）、`src/voice/controller.js`（编排）、`src/voice/timeline.js`（播放与动作时间线）。头像仍消费 `expression` 与 `arkit-52-v1`，不依赖供应商 API。
 
 本地接口：`GET /api/voice/health` 返回配置状态和本次服务的临时 token；`POST /api/voice/emotion` 需要 `X-Realpet-Token`；`WS /api/voice/live?token=…` 只转发受限的音频与控制事件。API key 不通过这些接口返回。

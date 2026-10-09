@@ -16,7 +16,8 @@ async function setup(page, { output = "live" } = {}) {
       return dest.stream;
     };
   });
-  await page.route("**/api/voice/health", route => route.fulfill({ json: { ...health, elevenConfigured: true, elevenModel: "eleven_v4_turbo" } }));
+  await page.route("**/api/voice/health", route => route.fulfill({ json: { ...health, elevenConfigured: true, elevenModel: "eleven_v4_turbo", speechEngineConfigured: true, speechEngineModel: "fixture-text" } }));
+  await page.route("**/api/voice/speech-engine", route => route.fulfill({ json: { signedUrl: "wss://api.elevenlabs.io/fixture-engine" } }));
   await page.route("**/api/model/health", route => route.fulfill({ json: { loaded: true } }));
   await page.route("**/api/model/infer", route => route.fulfill({ json: {
     schema: "arkit-52-v1", durationMs: 1000, inferenceMs: 20,
@@ -24,6 +25,14 @@ async function setup(page, { output = "live" } = {}) {
   } }));
   let socket;
   const sent = [];
+  await page.routeWebSocket("wss://api.elevenlabs.io/fixture-engine", ws => {
+    socket = ws;
+    ws.onMessage(data => { const event = JSON.parse(data); sent.push(event.type || (event.user_audio_chunk ? "user_audio_chunk" : "unknown"));
+      if (event.type === "conversation_initiation_client_data") ws.send(JSON.stringify({ type: "conversation_initiation_metadata", conversation_initiation_metadata_event: {
+        agent_output_audio_format: "pcm_16000", user_input_audio_format: "pcm_16000",
+      } }));
+    });
+  });
   await page.routeWebSocket("**/api/voice/live?*", ws => {
     socket = ws;
     ws.onMessage(data => { const event = JSON.parse(data); sent.push(event.type); if (event.type === "session.close") { ws.send(JSON.stringify({ type: "session.closed" })); ws.close(); } });
@@ -31,7 +40,7 @@ async function setup(page, { output = "live" } = {}) {
   });
   await page.goto("/?character=follow");
   await page.waitForFunction(() => window.avatar?.getState().ready);
-  if (output === "eleven") await page.locator("#voice-output-eleven").click();
+  if (output !== "live") await page.locator(`#voice-output-${output}`).click();
   await page.locator("#voice-start").click();
   await expect(page.locator("#voice-status")).toContainText("已连接");
   return {
@@ -239,4 +248,30 @@ test('interrupting ElevenLabs synthesis discards late audio and emotion',async({
  await expect(page.locator('#voice-assistant')).not.toContainText('Hello!');
  await expect(page.locator('#voice-stop')).toBeEnabled();
  await page.locator('#voice-stop').click();
+});
+
+test("Speech Engine streams PCM into the same caption, JEV and mouth clock without GPT-Live", async ({ page }) => {
+  await page.route("**/api/voice/emotion", route => route.fulfill({ json: { emotion: "happy", intensity: .8, confidence: .95, inferenceMs: 20 } }));
+  let liveOpened = false;
+  page.on("websocket", ws => { if (ws.url().includes('/api/voice/live')) liveOpened = true; });
+  const voice = await setup(page, { output: "engine" });
+  voice.event({ type: "user_transcript", user_transcription_event: { user_transcript: "你好" } });
+  voice.event({ type: "agent_response", agent_response_event: { agent_response: "你好！" } });
+  voice.event({ type: "audio", audio_event: { event_id: 1, audio_base_64: pcm.toString("base64"),
+    alignment: { chars: ["你", "好", "！"], char_start_times_ms: [0, 250, 450], char_durations_ms: [250, 200, 450] } } });
+  await page.waitForTimeout(200);
+  await expect(page.locator("#voice-assistant")).not.toHaveText("你好！");
+  await expect(page.locator("#voice-assistant")).toHaveText("你好！");
+  await expect.poll(() => page.evaluate(() => window.avatar.getState().emotion)).toBe("happy");
+  await expect.poll(() => page.evaluate(() => window.avatar.getFrame().performance?.weights.jawOpen)).toBe(.7);
+  expect(liveOpened).toBe(false);
+  expect(voice.sent).toContain("user_audio_chunk");
+  voice.event({ type: "interruption", interruption_event: { event_id: 1 } });
+  voice.event({ type: "audio", audio_event: { event_id: 1, audio_base_64: pcm.toString("base64"),
+    alignment: { chars: ["旧回复"], char_start_times_ms: [0], char_durations_ms: [1000] } } });
+  await page.waitForTimeout(1100);
+  await expect(page.locator("#voice-assistant")).not.toContainText("旧回复");
+  expect(await page.evaluate(() => window.avatar.getFrame().performance)).toBeNull();
+  await page.locator("#voice-stop").click();
+  await expect(page.locator("#voice-output-live")).toBeEnabled();
 });

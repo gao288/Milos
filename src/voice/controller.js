@@ -4,6 +4,7 @@ import { encodeWav, LocalAudioModelProvider } from "../providers/audio-model.js"
 import { SpeechEnvelope, pcmRms } from "./speech-envelope.js";
 import { emotionWindow, rememberSpeech } from "./emotion-context.js";
 import { ElevenOutput } from "./eleven-output.js";
+import { SpeechEngineOutput } from "./speech-engine.js";
 
 /** Voice, expression and mouth providers meet only at normalized avatar events.
  * Transcript timestamps are approximate session times. PCM packets have no
@@ -26,12 +27,13 @@ export class VoiceController {
     const generation = ++this.generation;
     this.active = true; this.onActive(true); this.onStatus("正在连接语音…");
     try {
-      if (!["live", "eleven"].includes(output)) throw Error("未知配音模式");
+      if (!["live", "eleven", "engine"].includes(output)) throw Error("未知配音模式");
       this.output = output;
       const config = await this.health();
       if (generation !== this.generation) return;
       if (!config.openaiConfigured) throw Error("请在本地 .env 配置 OPENAI_API_KEY 后重启语音服务");
       if (output === "eleven" && !config.elevenConfigured) throw Error("请在本地 .env 配置 ELEVENLABS_API_KEY 和 ELEVENLABS_VOICE_ID 后重启语音服务");
+      if (output === "engine" && !config.speechEngineConfigured) throw Error("Speech Engine 尚未就绪：需要配置 ElevenLabs 回调服务");
       if (!navigator.mediaDevices?.getUserMedia) throw Error("麦克风需要 HTTPS 或 localhost");
       const context = new AudioContext({ sampleRate: 16000 }); this.context = context;
       await context.resume();
@@ -52,18 +54,25 @@ export class VoiceController {
       this.captions = []; this.history = []; this.fragments = []; this.emotions = new CueQueue();
       this.mouth = new PerformanceTimeline(); this.resetMouth();
       this.eleven = output === "eleven" ? new ElevenOutput(this) : null;
+      this.engine = output === "engine" ? new SpeechEngineOutput(this) : null;
       this.sessionOrigin = context.currentTime; this.started = false; this.inputLevel = 0; this.speechMs = 0;
       this.emotionBusy = false; this.lastEmotionEnd = -1; this.lastEmotionAt = -Infinity;
       this.installMouth();
-      this.socket = new WebSocket(`${location.protocol === "https:" ? "wss:" : "ws:"}//${location.host}/api/voice/live?token=${encodeURIComponent(config.token)}`);
+      const connection = this.engine ? await this.engine.connect() : new WebSocket(`${location.protocol === "https:" ? "wss:" : "ws:"}//${location.host}/api/voice/live?token=${encodeURIComponent(config.token)}`);
+      if (generation !== this.generation) { connection?.close(); return; }
+      this.socket = connection;
       const socket = this.socket;
+      this.startupTimer = setTimeout(() => { if (generation === this.generation && !this.started) { this.stop(); this.onStatus("语音连接超时，请检查回调服务", true); } }, 25000);
       socket.onmessage = message => {
         if (generation !== this.generation) return;
-        try { this.receive(JSON.parse(message.data)); }
+        try { const event = JSON.parse(message.data); if (this.engine) this.engine.receive(event); else this.receive(event); }
         catch (error) { this.stop(); this.onStatus(error.message, true); }
       };
       socket.onerror = () => { if (generation === this.generation) { this.stop(); this.onStatus("语音连接失败，请检查本地服务", true); } };
-      socket.onclose = () => { if (generation === this.generation) { this.stop(); this.onStatus("语音会话已结束"); } };
+      socket.onclose = event => { if (generation === this.generation) {
+        const failed = this.engine && event.code !== 1000;
+        this.stop(); this.onStatus(failed ? `Speech Engine 异常断开（${event.code}），请检查回调与 LLM 服务` : "语音会话已结束", !!failed);
+      } };
       this.capture.port.onmessage = ({ data }) => {
         if (!this.started || socket.readyState !== WebSocket.OPEN) return;
         const rms = Math.sqrt(data.reduce((sum, v) => sum + v * v, 0) / data.length);
@@ -71,11 +80,11 @@ export class VoiceController {
         this.speechMs = rms > 0.035 ? this.speechMs + 20 : 0;
         // Live streams silent output packets while listening. Only interrupt
         // audible speech, not every phrase the user says during a quiet turn.
-        if (this.speechMs === 180 && (this.map.slots.some(slot => slot.audible && slot.end > context.currentTime) ||
+        if (!this.engine && this.speechMs === 180 && (this.map.slots.some(slot => slot.audible && slot.end > context.currentTime) ||
           this.eleven?.busy || this.eleven?.queue.length || this.eleven?.pending))
           this.interrupt(true);
         if (rms > 0.035) this.quietUntil = context.currentTime + 0.25;
-        if (socket.bufferedAmount < 128000) socket.send(JSON.stringify({ type: "session.input_audio.append", audio: pcmEncode(data) }));
+        if (socket.bufferedAmount < 128000) socket.send(JSON.stringify(this.engine ? { user_audio_chunk: pcmEncode(data) } : { type: "session.input_audio.append", audio: pcmEncode(data) }));
         else { this.stop(); this.onStatus("语音上传拥塞，已断开以避免累积延迟", true); }
       };
       this.timer = setInterval(() => this.tick(), 30);
@@ -116,6 +125,7 @@ export class VoiceController {
   receive(event) {
     const now = this.context.currentTime;
     if (event.type === "session.started") {
+      clearTimeout(this.startupTimer);
       this.started = true; this.sessionOrigin = now; this.onStatus("已连接 · 可以开始说话");
       this.avatar.dispatch({ type: "behavior", state: "listening" }); return;
     }
@@ -155,6 +165,7 @@ export class VoiceController {
     if (!this.active || !this.context) return;
     const now = this.context.currentTime;
     this.eleven?.tick(now);
+    try { this.engine?.tick(); } catch (error) { this.stop(); this.onStatus(error.message, true); return; }
     const transcriptClock = (now - this.sessionOrigin - this.map.delay) * 1000;
     // Do not reveal a caption until corresponding audio has at least started.
     // Allow late transcript fragments to update already spoken captions.
@@ -247,9 +258,10 @@ export class VoiceController {
   interrupt(fromMic = false) {
     if (!this.map) return;
     this.eleven?.clear();
+    this.engine?.interrupt(fromMic);
     // Mic barge-in is handled by Live's full-duplex audio understanding. A
     // persistent "wait for next input" instruction would suppress its reply.
-    if (!fromMic && this.socket?.readyState === WebSocket.OPEN) this.socket.send(JSON.stringify({ type: "bridge.interrupt" }));
+    if (!this.engine && !fromMic && this.socket?.readyState === WebSocket.OPEN) this.socket.send(JSON.stringify({ type: "bridge.interrupt" }));
     this.dropAudioUntil = this.context.currentTime + 0.3;
     this.bargeActive = fromMic;
     for (const s of this.sources) s.stop(); this.sources.clear(); this.map.clear();
@@ -265,17 +277,20 @@ export class VoiceController {
     const wasActive = this.active;
     this.eleven?.clear(); this.eleven = null;
     ++this.generation; this.active = false; this.started = false; clearInterval(this.timer);
+    clearTimeout(this.startupTimer);
     this.emotionAbort?.abort(); this.mouthAbort?.abort();
     const socket = this.socket; this.socket = null;
     if (socket) {
       socket.onmessage = socket.onerror = socket.onclose = null;
-      if (socket.readyState === WebSocket.OPEN) {
+      if (this.engine) socket.close();
+      else if (socket.readyState === WebSocket.OPEN) {
         socket.send(JSON.stringify({ type: "session.close" }));
         const timeout = setTimeout(() => socket.close(), 16000);
         socket.onmessage = ({ data }) => { try { if (JSON.parse(data).type === "session.closed") { clearTimeout(timeout); socket.close(); } } catch {} };
         socket.onclose = () => clearTimeout(timeout);
       } else socket.close();
     }
+    this.engine = null;
     this.media?.getTracks().forEach(t => t.stop()); this.media = null;
     this.capture?.disconnect(); this.mic?.disconnect(); this.capture = this.mic = null;
     for (const s of this.sources) { try { s.stop(); } catch {} } this.sources.clear();

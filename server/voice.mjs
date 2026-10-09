@@ -4,6 +4,7 @@ import { pathToFileURL } from "node:url";
 import WebSocket, { WebSocketServer } from "ws";
 import { inferEmotion, JEV_MODEL } from "./jev.mjs";
 import { synthesizeEleven, ELEVEN_MODEL } from "./eleven.mjs";
+import { createEngineService, ENGINE_LLM } from "./speech-engine.mjs";
 
 export function liveConfig(env = process.env) {
   return { model: env.GPT_LIVE_MODEL || "gpt-live-1", audio: {
@@ -13,7 +14,7 @@ export function liveConfig(env = process.env) {
 }
 
 // A separate loopback bridge keeps credentials and provider logic out of Vite.
-export function createVoiceServer({ env = process.env, connect = (url, options) => new WebSocket(url, options), emotion = inferEmotion, tts = synthesizeEleven } = {}) {
+export function createVoiceServer({ env = process.env, connect = (url, options) => new WebSocket(url, options), emotion = inferEmotion, tts = synthesizeEleven, engine } = {}) {
   const token = randomBytes(24).toString("hex");
   const clients = new Set();
   const busy = new Set();
@@ -24,9 +25,15 @@ export function createVoiceServer({ env = process.env, connect = (url, options) 
       return json(res, 200, { openaiConfigured: !!env.OPENAI_API_KEY, jevConfigured: !!(env.JEV_API_KEY || env.TYPESAFE_API_KEY),
         liveModel: liveConfig(env).model, jevModel: env.JEV_MODEL || JEV_MODEL,
         elevenConfigured: !!(env.ELEVENLABS_API_KEY && env.ELEVENLABS_VOICE_ID), elevenModel: env.ELEVENLABS_MODEL || ELEVEN_MODEL,
+        speechEngineConfigured: !!engine?.ready, speechEngineModel: env.SPEECH_ENGINE_LLM_MODEL || ENGINE_LLM,
         token, delegation: "pending-p1" });
     }
     if (req.headers["x-realpet-token"] !== token) return json(res, 403, { error: "Invalid local session token" });
+    if (req.method === "POST" && url.pathname === "/api/voice/speech-engine") {
+      if (!engine?.ready) return json(res, 503, { error: "Speech Engine 尚未配置回调服务" });
+      try { return json(res, 200, await engine.signedUrl()); }
+      catch { return json(res, 502, { error: "Speech Engine 会话创建失败，请检查 ElevenLabs 权限和回调服务" }); }
+    }
     if (req.method !== "POST" || !["/api/voice/emotion", "/api/voice/eleven"].includes(url.pathname)) return json(res, 404, { error: "Not found" });
     if (busy.has(url.pathname)) return json(res, 429, { error: "Request already running" });
     if (!String(req.headers["content-type"]).startsWith("application/json")) return json(res, 415, { error: "Expected JSON" });
@@ -118,5 +125,7 @@ export function createVoiceServer({ env = process.env, connect = (url, options) 
 
 if (process.argv[1] && import.meta.url === pathToFileURL(process.argv[1]).href) {
   const port = Number(process.env.REALPET_VOICE_PORT || 8788);
-  createVoiceServer().listen(port, "127.0.0.1", () => console.log(`Voice bridge: http://127.0.0.1:${port}`));
+  const engine = createEngineService();
+  try { await engine.start(); } catch { console.error("Speech Engine callback unavailable; other voice modes remain available"); }
+  createVoiceServer({ engine }).listen(port, "127.0.0.1", () => console.log(`Voice bridge: http://127.0.0.1:${port}`));
 }
