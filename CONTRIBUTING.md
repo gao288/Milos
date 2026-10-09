@@ -1,6 +1,6 @@
-# Contributing to RealPet
+# Contributing to Milos
 
-RealPet separates input providers, animation state, and character rendering. Changes should preserve that boundary so new characters and speech models can reuse the same framework.
+Milos separates input providers, animation state, and character rendering. Changes should preserve that boundary so new characters and speech models can reuse the same framework.
 
 ## Local workflow
 

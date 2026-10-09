@@ -1,5 +1,5 @@
 {
-  "name": "realpet",
+  "name": "milos",
   "version": "1.0.0",
   "description": "An expressive avatar framework for real-time voice conversations, with Rive animation and interchangeable speech and facial-performance providers.",
   "scripts": {
@@ -49,5 +49,13 @@
   "private": true,
   "engines": {
     "node": ">=22.12.0"
+  },
+  "repository": {
+    "type": "git",
+    "url": "git+https://github.com/gao288/Milos.git"
+  },
+  "homepage": "https://github.com/gao288/Milos#readme",
+  "bugs": {
+    "url": "https://github.com/gao288/Milos/issues"
   }
 }

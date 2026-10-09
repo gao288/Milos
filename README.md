@@ -1,8 +1,10 @@
-# RealPet
+# Milos
+
+[![CI](https://github.com/gao288/Milos/actions/workflows/ci.yml/badge.svg)](https://github.com/gao288/Milos/actions/workflows/ci.yml)
 
 **An expressive avatar framework for real-time voice conversations.**
 
-RealPet connects streaming speech, emotion inference, and continuous facial animation through a shared, renderer-independent interface. Swap the character, animation engine, or voice provider while keeping the same control protocol.
+Milos connects streaming speech, emotion inference, and continuous facial animation through a shared, renderer-independent interface. Swap the character, animation engine, or voice provider while keeping the same control protocol.
 
 ![Twelve expression variations rendered from the native Follow V2 Rive rig](design/expression-studies/follow-v2-rendered.png)
 
@@ -25,6 +27,8 @@ The project is a working development playground and reusable source framework. V
 Use **Node.js 22.12 or later** and npm.
 
 ```sh
+git clone https://github.com/gao288/Milos.git
+cd Milos
 npm ci
 npm run dev
 ```
@@ -144,4 +148,4 @@ The browser suite uses a simulated microphone and does not require paid API call
 
 Project code is licensed under [ISC](LICENSE). Character artwork, model-related resources, and other third-party components retain their respective terms; see [THIRD_PARTY_NOTICES.md](THIRD_PARTY_NOTICES.md). Model weights are downloaded separately and are not included in this repository.
 
-RealPet is an independent project and is not affiliated with Rive, OpenAI, ElevenLabs, or the original character creator.
+Milos is an independent project and is not affiliated with Rive, OpenAI, ElevenLabs, or the original character creator.
