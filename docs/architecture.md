@@ -100,8 +100,13 @@ Girl uses the same seven emotion names and intensity stops as Follow V2. Its
 adapter is `src/characters/girl.js`; `scripts/generate_girl.py` extends the preserved
 source in `rive-girl/source/original.xml`. The original hair, face, and body pose
 controllers are retained, while new native eye and lip geometry supports stronger
-expressions and a shared continuous articulation solver. The original nose detail
-is retained; its separate wrinkle control is not mapped in this first Girl rig.
+expressions and a shared continuous articulation solver. Concept-fit overlays adjust
+the fringe, ear, and chin without changing their bind poses. A smaller nose contour
+replaces the original profile bridge; nose wrinkle is not mapped.
+
+`src/characters/girl-mouth.js` derives an outer lip envelope from the shared inner
+mouth contour, retaining lip volume during speech and asymmetric articulation.
+The concept and native-render comparison is saved alongside the expression sheet.
 
 ```sh
 npm run rive:girl:build

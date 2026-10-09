@@ -39,6 +39,7 @@ switches preserve the current performance. Choose Girl from the dropdown, or use
 `?character=girl` in the app URL.
 
 [View the native expression sheet](design/expression-studies/girl/v1-rendered.png)
+· [Design / rig comparison](design/expression-studies/girl/v2-comparison.png)
 · [Download the Rive Editor project](public/girl-expressive.rev)
 
 ## Quick start

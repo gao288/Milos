@@ -1,4 +1,5 @@
 import animationUrl from '../assets/girl-expressive.riv?url';
+import { GIRL_LIP_DEFAULTS, girlLipEnvelope } from './girl-mouth.js';
 import { FOLLOW_MOUTH_DEFAULTS } from './follow-mouth.js';
 import { FOLLOW_VISEMES, solveFollowFrame } from './follow-signals.js';
 
@@ -8,9 +9,10 @@ export function solveGirlFrame(frame) {
   const signals = solveFollowFrame(frame);
   return {
     ...signals,
+    ...girlLipEnvelope(signals),
     gazeX: frame.motion.gazeX * 13,
     gazeY: frame.motion.gazeY * 8,
-    mouseX: 650 + frame.motion.gazeX * 280,
+    mouseX: 1100 + frame.motion.gazeX * 280,
     mouseY: 540 + frame.motion.gazeY * 230,
   };
 }
@@ -25,7 +27,7 @@ export const girl = {
       'emotion', 'intensity', 'eyeOpen', 'leftEyeScale', 'rightEyeScale',
       'browRaiseLeft', 'browRaiseRight', 'restWeight', 'speechWeight',
       'mouthLift', 'mouthStretch', 'cheekRaise', 'noseWrinkle', 'gazeX', 'gazeY',
-      ...Object.keys(FOLLOW_MOUTH_DEFAULTS),
+      ...Object.keys(FOLLOW_MOUTH_DEFAULTS), ...Object.keys(GIRL_LIP_DEFAULTS),
     ].map(name => [name, { property: name }])),
     mouseX: { property: 'Mouse X' }, mouseY: { property: 'Mouse Y' },
     headTilt: { property: 'headTilt', scale: .13 },
