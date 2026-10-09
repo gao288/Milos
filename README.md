@@ -47,7 +47,7 @@ tailscale serve --bg --https=7443 http://127.0.0.1:5173
 - 在 `.env` 配置 `ELEVENLABS_API_KEY`、`ELEVENLABS_VOICE_ID`，可选 `ELEVENLABS_MODEL`（默认 `eleven_v4_turbo`，也接受 `eleven_v4`、`eleven_v3`），重启语音服务。音色必须对该 key 可用；真实账号可用性和听感需要实测。缺少配置会在申请麦克风前提示。
 - 服务端 `/api/voice/eleven` 先用 JEV 判断本段情绪，高置信度时添加简短表演标签，再请求 ElevenLabs TTS。`sad` 使用轻度同情语气，不自动加入哭腔。标签是模型提示，遵循程度依赖音色；JEV 故障时沿用默认语气并提示。
 - 每个短句完整合成、解码后播放，嘴形使用同一替换音频推理；字幕和表情按新音频的播放时钟安排。此模式的 JEV 更新按短句进行，不保证每 500ms；需等待文本成句、JEV、TTS 和最多 1.8 秒嘴形准备，延迟高于原声模式。打断/停止会取消合成并丢弃旧结果；合成失败会停止会话，不偷偷播放另一种音色。
-- 单段文本最多 400 字符、音频最多 25 秒，队列有上限；key 仅在本地服务端使用。已用模拟音频验证切换、对齐及打断，尚未用真实 ElevenLabs 凭据试听。
+- 单段文本最多 400 字符、音频最多 25 秒，队列有上限；key 仅在本地服务端使用。已用模拟音频验证切换、对齐及打断；已用真实凭据验证 Chris 男声（`iP95p4xoKVk53GoZ742B`）和 `eleven_v4_turbo` 的中英文短句合成，JEV 的 happy / sad 标签随请求传入，浏览器可解码为 16 kHz 非静音音频。完整双向对话的听感与延迟仍需实机体验；本地凭据仅存在被 Git 忽略的 `.env`。
 
 表情概念稿：`design/expression-studies/follow-v1.png`，12 个变体含不安与惊恐；生成提示保存在同目录 `.prompt.txt`，使用内置 imagegen。已据此实现 Follow V2 的原生眼睑、瞳孔、眉形、情绪嘴与头部姿态；运行时和 JEV 已加入 `fear`。这是保留原角色几何的动画改编，并非概念图的逐像素复刻。实际原生渲染对照图为 `design/expression-studies/follow-v2-rendered.png`，可运行 `node scripts/render-follow-studies.mjs` 重建。
 
