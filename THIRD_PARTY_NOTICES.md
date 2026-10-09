@@ -32,8 +32,9 @@ No affiliation with or endorsement by the creator is implied.
 - Adapted assets: `rive-girl/scene.rml`, `src/assets/girl-expressive.riv`, and the matching `.riv` / `.rev` files in `public/`.
 
 Modifications preserve the original character artwork and pose controllers, add
-seven expression states with twelve authored poses, replace eye and mouth artwork
-with parameterized geometry, and connect continuous lip/jaw control to Milos.
+seven expression states with twelve controller-keyed poses, repair imported
+iris/pupil draw ordering, and connect the original lip/jaw bones to Milos.
+All original paths, vertices, fills, gradients, and skin bindings are retained.
 The original cloud file is not overwritten. Modified character artwork retains
 CC BY 4.0 attribution; no endorsement by its creator is implied.
 

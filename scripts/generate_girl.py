@@ -1,10 +1,9 @@
-"""Adapt marvin.te's Girl source; never write to the user's original cloud file.
+"""Animate marvin.te's original Girl artwork through native controller keyframes.
 
-Original gaze/pose bones remain intact. Native expression state transitions own
-brows, lids and emotional lips; independently bound vertices own articulation.
+All source paths, vertices, fills, gradients and skin bindings stay intact.
+Expression poses and continuous speech add offsets to the existing controllers.
 """
 from pathlib import Path
-import math
 import json
 import subprocess
 import xml.etree.ElementTree as E
@@ -23,36 +22,11 @@ def static(a, obj, prop, value):
     ko=el(a,'KeyedObject',objectId=obj.get('id'))
     kp=el(ko,'KeyedProperty',propertyKey=prop)
     el(kp,'KeyFrameDouble',frame=0,value=value,interpolationType='linear')
-def fill(shape,color): el(el(shape,'Fill'),'SolidColor',colorValue=color)
-def stroke(shape,color,thickness):
-    el(el(shape,'Stroke',thickness=thickness,cap='round',join='round'),'SolidColor',colorValue=color)
-def ellipse(parent,name,x,y,w,h,color):
-    s=el(parent,'Shape',name=name,x=x,y=y)
-    g=el(s,'Ellipse',width=w,height=h,originX=.5,originY=.5);fill(s,color)
-    return s,g
-
-def geometry(points,closed):
-    for i,(x,y) in enumerate(points):
-        prev=points[(i-1)%len(points)] if closed or i else points[i]
-        nxt=points[(i+1)%len(points)] if closed or i+1<len(points) else points[i]
-        dx=(nxt[0]-prev[0])/6;dy=(nxt[1]-prev[1])/6
-        yield dict(x=x,y=y,inRotation=math.atan2(-dy,-dx),outRotation=math.atan2(dy,dx),inDistance=math.hypot(dx,dy),outDistance=math.hypot(dx,dy))
-def path(parent,name,points,closed=False,color=None,line=None,thickness=3):
-    s=el(parent,'Shape',name=name);p=el(s,'PointsPath',isClosed=str(closed).lower())
-    vs=[el(p,'CubicDetachedVertex',**v) for v in geometry(points,closed)]
-    if color:fill(s,color)
-    if line:stroke(s,line,thickness)
-    return s,vs
-keys={'x':24,'y':25,'inRotation':84,'inDistance':85,'outRotation':86,'outDistance':87}
-def pose_path(a,vs,points,closed=False,handle_scale=1):
-    for v,values in zip(vs,geometry(points,closed)):
-        for prop,value in values.items():static(a,v,keys[prop],value * handle_scale if prop.endswith('Distance') else value)
-
 ab=find('1:2');ab.set('name','Girl');ab.set('width','1080');ab.set('height','1080')
 vm=find('1:8619');vm.set('name','GirlFace');instance=find('1:8620');instance.set('name','Default')
 mouth_contract=json.loads(subprocess.check_output(['node','--input-type=module','-e',
-    "import { FOLLOW_MOUTH_DEFAULTS, LIP_POINTS } from './src/characters/follow-mouth.js'; import { GIRL_LIP_DEFAULTS } from './src/characters/girl-mouth.js'; console.log(JSON.stringify({defaults:{...FOLLOW_MOUTH_DEFAULTS,...GIRL_LIP_DEFAULTS},points:LIP_POINTS}));"],cwd=project.parent,text=True))
-defaults=dict(emotion=0,intensity=1,eyeOpen=1,leftEyeScale=1,rightEyeScale=1,
+    "import { FOLLOW_MOUTH_DEFAULTS, LIP_POINTS } from './src/characters/follow-mouth.js'; import { GIRL_MOUTH_DEFAULTS } from './src/characters/girl-mouth.js'; console.log(JSON.stringify({defaults:{...FOLLOW_MOUTH_DEFAULTS,...GIRL_MOUTH_DEFAULTS},points:LIP_POINTS}));"],cwd=project.parent,text=True))
+defaults=dict(nativeBlink=-.56,emotion=0,intensity=1,eyeOpen=1,leftEyeScale=1,rightEyeScale=1,
     browRaiseLeft=0,browRaiseRight=0,gazeX=0,gazeY=0,headTilt=0,breath=0,
     restWeight=1,speechWeight=0,mouthLift=0,mouthStretch=1,cheekRaise=0,noseWrinkle=0,
     **mouth_contract['defaults'])
@@ -85,132 +59,97 @@ emotional=el(base,'Node',name='Expression posture')
 manual=el(emotional,'Node',name='Head tilt and breath');bind(manual,'headTilt',15);bind(manual,'breath',14)
 restore=el(manual,'Node',x=-640,y=-830);restore.append(character)
 
-# Retain old artwork and controllers for reference, behind opacity gates.
-for id in ['1:163','1:225','1:5264','1:5583','1:5960','1:5171']:find(id).set('opacity','0')
-# Canvas runtimes without feather support otherwise show opaque cheek disks.
-# Keep the original blush shape subtle in both native and web renderers.
-for id in ['1:5706','1:8407']:find(id).set('colorValue','40FBBEFD')
-INK='FF3522A8';LIP='FFB777DA';LIP_LIGHT='FFD498EB'
-eyes=[];brows=[]
-# Names follow screen-side conventions, as does the shared face protocol.
-for side,parent_id,x,y,sx,sy,rot in [('Right','1:7692',43,-24,1.23,1.36,-.20),('Left','1:8249',20,-22,.87,1.08,.22)]:
-    origin=el(find(parent_id),'Node',name=side+' eye anchor',x=x,y=y,scaleX=sx,scaleY=sy,rotation=rot)
-    manual_eye=el(origin,'Node',name=side+' manual eyelid');bind(manual_eye,side.lower()+'EyeScale',17)
-    blink=el(manual_eye,'Node',name=side+' blink');bind(blink,'eyeOpen',17)
-    # Child order is front-to-back. Whites are bounded by the actual opening;
-    # pupil, glint and iris share its clipping boundary during every blink.
-    upper,uv=path(blink,side+' upper liner',[(-35,2),(0,-22),(35,-4)],line=INK,thickness=4)
-    lower,lv=path(blink,side+' lower liner',[(-35,2),(0,19),(35,-4)],line=INK,thickness=1.5)
-    iris_pose=el(blink,'Node',name=side+' expressive pupil')
-    gaze=el(iris_pose,'Node',name=side+' gaze');bind(gaze,'gazeX',13);bind(gaze,'gazeY',14)
-    glint,_=ellipse(gaze,side+' glint',8,-11,6,6,'FFFFFFFF')
-    pupil,_=ellipse(gaze,side+' pupil',5,-3,17,22,INK)
-    iris,_=ellipse(gaze,side+' iris',5,-3,30,37,'FF8253EA')
-    aperture,av=path(blink,side+' white opening',[(-35,2),(0,-22),(35,-4),(0,19)],True,'FFFFFFFF')
-    for s in [iris,pupil,glint]:el(s,'ClippingShape',sourceId=aperture.get('id'))
-    _,lash=path(blink,side+' tapered lash',[(-35,2),(0,-22),(40,-8),(34,-3),(0,-17)],True,INK)
-    eyes.append((side,upper,uv,lower,lv,iris_pose,av,lash))
-    # New brows follow their existing turn/vertical controllers.
-    brow_parent=find('1:7846' if side=='Right' else '1:7872')
-    origin=el(brow_parent,'Node',name=side+' brow anchor',x=80 if side=='Right' else 54,y=-5,scaleX=1.20 if side=='Right' else .88,rotation=-.12 if side=='Right' else .12)
-    pose=el(origin,'Node',name=side+' brow expression')
-    manual_brow=el(pose,'Node',name=side+' brow overlay');bind(manual_brow,'browRaise'+side,14)
-    _,bv=path(manual_brow,side+' eyebrow',[(-38,4),(-14,-10),(12,-15),(37,-9),(12,-22),(-17,-17)],True,INK)
-    brows.append((side,pose,bv))
-
-# The concept uses a small nose tip, without the long profile bridge crossing the far eye.
-nose=el(find('1:8275'),'Node',name='Concept nose',x=25,y=10)
-path(nose,'Nose tip',[(-12,-2),(-15,8),(-5,14)],line='FFC59AE3',thickness=2)
-ellipse(nose,'Nostril',8,12,6,3,'FFC59AE3')
-ellipse(nose,'Nose light',-10,4,5,7,'FFFFF4FF')
-
-# Mouth follows the original perspective/turn controller. Colored lip edges
-# maintain the source's visual identity; the shared solver supplies vertices.
-anchor=el(find('1:7764'),'Node',name='Milos lips',x=47,y=-20,rotation=-.22,scaleX=1.30,scaleY=1.15)
-overlay=el(anchor,'Node',name='Manual lip pose');bind(overlay,'mouthLift',14);bind(overlay,'mouthStretch',16)
-rest=el(overlay,'Node',name='Emotional lips');bind(rest,'restWeight',18)
-rest_teeth,rtg=ellipse(rest,'Emotional teeth',0,1,48,10,'FFFFF7FF')
-rest_bottom_teeth,rbtg=ellipse(rest,'Fear lower teeth',0,12,42,5,'FFEBDDF6')
-rest_open,rv=path(rest,'Emotional aperture',[(-28,0),(0,-3),(28,0),(0,5)],True,'FF572B91',LIP,5)
-el(rest_teeth,'ClippingShape',sourceId=rest_open.get('id'))
-el(rest_bottom_teeth,'ClippingShape',sourceId=rest_open.get('id'))
-rest_upper,ruv=path(rest,'Upper lip',[(-28,0),(-10,-6),(0,-4),(9,-7),(28,0),(0,2)],True,LIP)
-rest_lower,rlv=path(rest,'Lower lip',[(-28,0),(0,2),(28,0),(9,13),(-13,12)],True,LIP_LIGHT)
-rest_seam,rsv=path(rest,'Lip seam',[(-28,0),(0,2),(28,0)],line='FFAA64CE',thickness=1.5)
-# Move the lip strokes in front of teeth and cavity.
-for s in [rest_lower,rest_upper,rest_seam]:rest.remove(s);rest.insert(0,s)
-speech=el(overlay,'Node',name='Continuous speech');bind(speech,'speechWeight',18)
-teeth,tg=ellipse(speech,'Upper teeth',0,-4,46,8,'FFFFF7FF');bind(teeth,'teethX',13);bind(tg,'teethWidth',20);bind(teeth,'teethVisible',18)
-lower_teeth,_=ellipse(speech,'Lower teeth',0,9,43,5,'FFE2CDEB');bind(lower_teeth,'lowerTeethX',13);bind(lower_teeth,'lowerTeethY',14);bind(lower_teeth,'teethVisible',18)
-tongue,_=ellipse(speech,'Tongue',0,12,30,14,'FFE390C8');bind(tongue,'tongueX',13);bind(tongue,'tongueY',14)
-cavity=el(speech,'Shape',name='Eight-point speech lips');contour=el(cavity,'PointsPath',isClosed='true')
-for prefix in mouth_contract['points']:
-    v=el(contour,'CubicDetachedVertex',name=prefix,**{k:defaults[prefix+k[0].upper()+k[1:]] for k in keys})
-    for k,prop in keys.items():bind(v,prefix+k[0].upper()+k[1:],prop)
-fill(cavity,'FF572B91');stroke(cavity,LIP,2)
-# A filled outer envelope keeps the fuller lip silhouette during speech.
-outer=el(speech,'Shape',name='Full speech lip envelope')
-outer_path=el(outer,'PointsPath',isClosed='true')
-for prefix in mouth_contract['points']:
-    v=el(outer_path,'CubicDetachedVertex',name='outer '+prefix)
-    for k,prop in keys.items():
-        name=prefix+k[0].upper()+k[1:]
-        if k=='y' and not prefix.startswith('corner'): name='lip'+prefix[0].upper()+prefix[1:]+'Y'
-        v.set(k,str(defaults[name]));bind(v,name,prop)
-fill(outer,LIP_LIGHT)
-for s in [teeth,lower_teeth,tongue]:el(s,'ClippingShape',sourceId=cavity.get('id'))
-# Lower face follows jaw without scaling the whole head or moving the upper lip.
-# The original head is skinned to controller nodes; add translations to the chin
-# controllers, preserving the other perspective keys and bind poses.
-# Reparent lower-face controller groups under zero-offset overlays. Their
-# existing perspective animation and skin bind transforms stay intact.
-parents={child:parent for parent in r.iter() for child in parent}
-# Raise only the fringe-edge controls; retain the outer bob silhouette.
-for id in ['1:8972','1:8968','1:8960','1:8948','1:8940','1:8928','1:8920','1:15151','1:15148','1:15145']:
-    controller=find(id);parent=parents[controller];index=list(parent).index(controller)
-    parent.remove(controller)
-    fit=el(parent,'Node',name='Concept fringe proportion',y=-25)
-    parent.remove(fit);parent.insert(index,fit)
-    fit.append(controller)
-# Ear stays aligned to the revised eye line.
-ear=find('1:8436');parent=parents[ear];index=list(parent).index(ear);parent.remove(ear)
-fit=el(parent,'Node',name='Concept ear position',y=-20)
-parent.remove(fit);parent.insert(index,fit);fit.append(ear)
-for id in ['1:6813','1:6814','1:6815','1:6816']:
-    controller=find(id);parent=parents[controller];index=list(parent).index(controller)
-    parent.remove(controller)
-    fit=el(parent,'Node',name='Concept chin proportion '+id,x=30 if id in ['1:6814','1:6815'] else 14,y=-15 if id in ['1:6814','1:6815'] else 0)
-    parent.remove(fit);parent.insert(index,fit)
-    jaw=el(fit,'Node',name='Continuous jaw '+id)
-    jaw.append(controller)
-    bind(jaw,'jawX',13);bind(jaw,'jawY',14)
-# Subtle cheek lift follows the same manual/model face protocol.
-for id in ['1:8376','1:8412']:
-    controller=find(id);parent=parents[controller];index=list(parent).index(controller)
-    parent.remove(controller)
-    cheek=el(parent,'Node',name='Cheek lift '+id)
-    parent.remove(cheek);parent.insert(index,cheek);cheek.append(controller)
-    bind(cheek,'cheekRaise',14)
 
 
-names=['neutral','happy','sad','curious','surprised','angry','fear']
-# width, smile curve, aperture, eye top L/R, bottom, pupil size, gaze Y,
-# brow rise L/R, brow rotation L/R, roll, head Y
-poses={
- 'neutral': (55,5,0,-21,-22,18,1,0, 0,0,0,0,0,0),
- 'warm': (65,10,7,-17,-18,14,1,0, -3,-3,-.08,.08,-.025,0),
- 'happy': (72,15,35,-7,-7,-3,0,0, -11,-11,-.08,.08,.025,-6),
- 'empathy': (52,2,0,-16,-17,15,1,4, -4,-4,-.30,.30,-.025,4),
- 'sad': (51,-4,0,-7,-7,12,.9,8, -5,-5,-.48,.48,-.05,9),
- 'curious': (40,0,4,-10,-29,17,1,0, 5,-16,.08,.18,.055,0),
- 'surprise': (27,0,27,-34,-34,27,.8,0, -18,-18,-.08,.08,0,-3),
- 'surprised': (52,10,30,-29,-29,23,1.1,0, -17,-17,-.10,.10,.02,-4),
- 'uneasy': (53,-6,2,-27,-24,18,.85,0, -7,-6,-.32,.30,-.025,-2),
- 'fear': (73,-9,31,-32,-32,25,.75,0, -12,-12,-.48,.48,-.03,-7),
- 'annoyed': (51,-4,0,-5,-5,16,1,3, 4,4,.16,-.16,.02,1),
- 'angry': (63,-8,14,-6,-6,16,.85,2, 12,12,.38,-.38,0,5),
+# Keep every source Shape, PointsPath, vertex, fill and gradient. Only controller
+# transforms / timelines are added. Imported DrawRules hid the nested irises;
+# make the original pupil/iris ordering explicit without redrawing either.
+for parent in list(r.iter()):
+    for c in list(parent):
+        if c.tag=='DrawRules':parent.remove(c)
+for id,x,y in [('1:75',-3,-36),('1:175',-17,-17),('1:94',0,-2),('1:187',0,-2)]:
+    obj=find(id);obj.set('x',str(x));obj.set('y',str(y))
+    for c in obj:
+        if c.tag=='FollowPathConstraint':c.set('strength','0')
+iris_poses=[]
+for irisid,pupilid,parentid,clipid in [('1:75','1:94','1:163','1:1909'),('1:175','1:187','1:225','1:3557')]:
+    iris=find(irisid);pupil=find(pupilid);parent=find(parentid)
+    iris.remove(pupil);parent.remove(iris)
+    gaze=el(parent,'Node',name='Original iris gaze');parent.remove(gaze);parent.insert(1,gaze)
+    bind(gaze,'gazeX',13);bind(gaze,'gazeY',14)
+    pose=el(gaze,'Node',name='Original iris expression',x=iris.get('x'),y=iris.get('y'));iris_poses.append(pose)
+    pupil.set('x','0');pupil.set('y','-2');iris.set('x','0');iris.set('y','0')
+    pose.append(pupil);pose.append(iris)
+    el(pupil,'ClippingShape',sourceId=clipid)
+bind(find('1:1025'),'nativeBlink',299)
+
+def wrap(id,name,**attrs):
+    obj=find(id)
+    parent=next(p for p in r.iter() if obj in list(p))
+    index=list(parent).index(obj);parent.remove(obj)
+    node=el(parent,'Node',name=name,**attrs);parent.remove(node);parent.insert(index,node);node.append(obj)
+    return node
+
+brows={};eyes={};brow_points={}
+for side,browid,eyeid in [('Left','1:5583','1:225'),('Right','1:5264','1:163')]:
+    brows[side]=wrap(browid,side+' original brow expression')
+    bind(wrap(browid,side+' manual brow'),'browRaise'+side,14)
+    eyes[side]=wrap(eyeid,side+' original eyelid expression')
+    bind(wrap(eyeid,side+' manual eyelid'),side.lower()+'EyeScale',17)
+for side,groupid in [('Right','1:5240'),('Left','1:5582')]:
+    controls=[c for c in find(groupid) if c.tag=='Node']
+    xs=[float(c.get('x','0')) for c in controls];mid=(min(xs)+max(xs))/2;span=(max(xs)-min(xs))/2
+    brow_points[side]=[(wrap(c.get('id'),side+' original brow key'),(x-mid)/span) for c,x in zip(controls,xs)]
+manual_lips=wrap('1:5960','Original lips manual pose');bind(manual_lips,'mouthLift',14);bind(manual_lips,'mouthStretch',16)
+# Each control retains its original skinned vertices and Bezier handles. The
+# expression timeline and speech deltas have separate, additive parent nodes.
+stations={
+ 'cornerLeft':['1:5807','1:5853','1:5916'],
+ 'upperLeft':['1:5806','1:5915','1:8501','1:8502'],
+ 'upperCenter':['1:5808'],
+ 'upperRight':['1:5920','1:8503'],
+ 'cornerRight':['1:5809','1:5855','1:5919'],
+ 'lowerRight':['1:5918','1:8698'],
+ 'lowerCenter':['1:5852','1:5854','1:8697'],
+ 'lowerLeft':['1:5917','1:8699'],
 }
-layer=el(sm,'StateMachineLayer',name='Expressions')
+lip_poses={}
+for station,ids in stations.items():
+    lip_poses[station]=[]
+    for id in ids:
+        pose=wrap(id,'Original lip pose '+station);lip_poses[station].append(pose)
+        speech=wrap(id,'Speech delta '+station)
+        for axis,key in [('X',13),('Y',14)]:bind(speech,'girl'+station[0].upper()+station[1:]+axis,key)
+for id,lip in [('1:5813','Upper'),('1:5860','Lower')]:
+    tangent=wrap(id,'Original '+lip+' right lip tangent')
+    for axis,key in [('X',13),('Y',14)]:bind(tangent,'girl'+lip+'RightHandle'+axis,key)
+jaws=[]
+for id in ['1:6813','1:6814','1:6815','1:6816']:
+    jaws.append(wrap(id,'Original jaw expression'))
+    jaw=wrap(id,'Continuous jaw');bind(jaw,'jawX',13);bind(jaw,'jawY',14)
+for id in ['1:8376','1:8412']:
+    bind(wrap(id,'Original cheek lift'),'cheekRaise',14)
+
+# Source happy is a 162-object authored timeline, accessed by its original
+# joystick. Other poses key the original feature controllers around that base.
+# happy amount, eyelid scale L/R, brow Y L/R, brow roll L/R, corner lift,
+# upper lip lift, lower lip drop, lip width delta, head roll, head Y.
+poses={
+ 'neutral':(0,1,1,0,0,0,0,0,0,0,0,0,0),
+ 'warm':(.25,.95,.95,0,0,0,0,-1,0,1,0,-.025,0),
+ 'happy':(1,.75,.75,0,0,0,0,-4,-2,13,3,.025,-6),
+ 'empathy':(0,.9,.9,-3,-3,-.14,.14,2,-3,-3,-1,-.025,4),
+ 'sad':(0,.72,.72,-3,-3,-.26,.26,5,-14,-14,-3,-.05,9),
+ 'curious':(0,.85,1.16,2,-12,0,.05,0,-1,2,-5,.055,0),
+ 'surprise':(0,1.3,1.3,-14,-14,-.03,.03,2,-6,14,-12,0,-3),
+ 'surprised':(.15,1.25,1.25,-12,-12,0,0,-2,-3,13,2,.02,-4),
+ 'uneasy':(0,1.08,1.08,-5,-5,-.18,.18,4,-8,-6,-1,-.025,-2),
+ 'fear':(0,1.35,1.35,-9,-9,-.26,.26,12,-12,10,5,-.03,-7),
+ 'annoyed':(0,.7,.7,3,3,.13,-.13,3,-7,-7,-1,.02,1),
+ 'angry':(0,.7,.7,6,6,.24,-.24,10,-12,-3,2,0,5),
+}
+names=['neutral','happy','sad','curious','surprised','angry','fear']
+layer=el(sm,'StateMachineLayer',name='Original artwork expressions')
 el(layer,'AnyState',x=-260,y=-160);el(layer,'ExitState',x=600,y=-160);entry=el(layer,'EntryState',x=-260,y=0)
 anims={name:el(ab,'LinearAnimation',name='Expression · '+name,duration=60,fps=60) for name in poses}
 states={};mid={'happy':'warm','sad':'empathy','surprised':'surprise','angry':'annoyed','fear':'uneasy'}
@@ -228,40 +167,20 @@ for name,state in states.items():
         bind(el(el(c,'TransitionPropertyViewModelComparator'),'BindablePropertyNumber'),'emotion',636)
         el(c,'TransitionValueNumberComparator',value=i)
 el(entry,'StateTransition',stateToId=states['neutral'].get('id'))
-for name,p in poses.items():
-    a=anims[name];w,smile,gap,tl,tr,bottom,pupil,py,bl,br,rl,rr,roll,hy=p
-    for side,upper,uv,lower,lv,pp,av,lash in eyes:
-        top=tl if side=='Left' else tr
-        slant=(8 if side=='Left' else -8) if name in ['angry','annoyed'] else 0
-        # Each lid deforms with the same aperture; no white can escape a blink.
-        up=[(-35,2-slant),(0,top),(35,-4+slant)]
-        down=[(-35,2-slant),(0,bottom),(35,-4+slant)]
-        if name=='happy':up=[(-35,2),(0,-13),(35,-4)];down=up
-        pose_path(a,uv,up,handle_scale=2);pose_path(a,lv,down,handle_scale=2)
-        pose_path(a,av,[up[0],up[1],up[2],down[1]],True,handle_scale=1.65)
-        pose_path(a,lash,[up[0],up[1],(up[2][0]+6,up[2][1]-5),up[2],(0,up[1][1]+5)],True,handle_scale=1.2)
-        static(a,pp,16,max(.01,pupil));static(a,pp,17,max(.01,pupil));static(a,pp,18,1 if pupil else 0);static(a,pp,14,py)
-    for side,pose,bv in brows:
-        static(a,pose,14,bl if side=='Left' else br);static(a,pose,15,rl if side=='Left' else rr)
-        pose_path(a,bv,[(-38,4),(-14,-10),(12,-15),(37,-9),(12,-22),(-17,-17)],True)
-    # Lips follow the expressive seam when closed and frame the opening otherwise.
-    up=[(-w/2,0),(0,smile if gap else smile-2),(w/2,0)]
-    down=[(-w/2,0),(0,smile+gap if gap else smile-2),(w/2,0)]
-    if name in ['fear','angry']:
-        up=[(-w/2,5),(0,-gap*.5),(w/2,5)];down=[(-w/2,5),(0,gap*.6),(w/2,5)]
-    if name in ['surprise','curious']:
-        up=[(-w/2,0),(0,-gap*.5),(w/2,0)];down=[(-w/2,0),(0,gap*.5),(w/2,0)]
-    ux,uy=up[1];dx,dy=down[1];l=up[0];rrp=up[2]
-    pose_path(a,ruv,[l,(-w*.18,uy-9),(0,uy-7),(w*.18,uy-10),rrp,(0,uy+1)],True)
-    pose_path(a,rlv,[down[0],(0,dy-1),down[2],(w*.18,dy+11),(-w*.22,dy+12)],True)
-    pose_path(a,rsv,up,handle_scale=1.4);static(a,rest_seam,18,0 if gap else 1)
-    pose_path(a,rv,[up[0],up[1],up[2],down[1]],True)
-    static(a,rest_open,18,1 if gap else 0)
-    static(a,rest_teeth,18,1 if name in ['warm','happy','surprised','angry','fear'] else 0)
-    static(a,rest_teeth,14,up[1][1]+3);static(a,rtg,20,w*.85)
-    static(a,rest_bottom_teeth,18,1 if name=='fear' else 0)
-    static(a,rest_bottom_teeth,14,down[1][1]-3);static(a,rbtg,20,w*.65)
+for name,values in poses.items():
+    a=anims[name];happy,eyeL,eyeR,browL,browR,rollL,rollR,corner,upper,lower,width,roll,hy=values
+    static(a,find('1:3052'),299,-1+2*happy)
+    for side,ey,brow,rot in [('Left',eyeL,browL,rollL),('Right',eyeR,browR,rollR)]:
+        static(a,eyes[side],17,ey);static(a,brows[side],14,brow)
+        for obj,t in brow_points[side]:static(a,obj,14,rot*70*t)
+    for obj in iris_poses:
+        size=.78 if name=='fear' else .85 if name=='surprise' else 1
+        static(a,obj,16,size);static(a,obj,17,size)
+    for station,nodes in lip_poses.items():
+        y=corner if station.startswith('corner') else upper if station.startswith('upper') else lower
+        x=(-width if station.endswith('Left') else width if station.endswith('Right') else 0)
+        for obj in nodes:static(a,obj,13,x);static(a,obj,14,y)
+    for jaw in jaws:static(a,jaw,14,lower*.3)
     static(a,emotional,15,roll);static(a,emotional,14,hy)
-
 E.indent(r,space='    ');E.ElementTree(r).write(project/'scene.rml',encoding='unicode')
-print(f'Girl: {len(props)} properties, 7 states / 12 poses, independent continuous mouth')
+print(f'Girl: original artwork, {len(props)} properties, 7 states / 12 keyed poses')

@@ -98,15 +98,19 @@ Use Follow Classic in the UI for an immediate visual fallback. For code rollback
 
 Girl uses the same seven emotion names and intensity stops as Follow V2. Its
 adapter is `src/characters/girl.js`; `scripts/generate_girl.py` extends the preserved
-source in `rive-girl/source/original.xml`. The original hair, face, and body pose
-controllers are retained, while new native eye and lip geometry supports stronger
-expressions and a shared continuous articulation solver. Concept-fit overlays adjust
-the fringe, ear, and chin without changing their bind poses. A smaller nose contour
-replaces the original profile bridge; nose wrinkle is not mapped.
+source in `rive-girl/source/original.xml`. All 71 original shapes are retained,
+including the brows, lashes, irises, lips, gradients, and highlights. The generator
+adds controller keyframes and additive speech offsets; it does not redraw paths.
+The author's happy and blink timelines remain active through their joysticks.
+Imported iris/pupil draw ordering is repaired explicitly, and their original paths
+are positioned under bounded gaze controls with the original eye-white clips.
+Nose wrinkle is not mapped.
 
-`src/characters/girl-mouth.js` derives an outer lip envelope from the shared inner
-mouth contour, retaining lip volume during speech and asymmetric articulation.
-The concept and native-render comparison is saved alongside the expression sheet.
+`src/characters/girl-mouth.js` maps the shared articulation contour to offsets on
+the original lip bones. Offsets return to zero when speech stops. Expression and
+speech offsets use separate parent nodes so they can be composed.
+`verify-girl-artwork.py` runs during builds and tests to guard the original
+geometry, styles, and skin bindings against accidental replacement.
 
 ```sh
 npm run rive:girl:build

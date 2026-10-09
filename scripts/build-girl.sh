@@ -2,6 +2,7 @@
 set -euo pipefail
 cd "$(dirname "$0")/.."
 python3 scripts/generate_girl.py
+python3 scripts/verify-girl-artwork.py
 bash scripts/rive-cli.sh rive-girl --verify
 bash scripts/rive-cli.sh inspect rive-girl --summary
 bash scripts/rive-cli.sh rive-girl --once

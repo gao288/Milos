@@ -35,11 +35,11 @@ The project is a working development playground and reusable source framework. V
 The character selector also includes **Girl · 12 expression poses**, adapted from
 [marvin.te’s Girl Animation (Cursor Tracking)](https://rive.app/marketplace/19397-36522-girl-animation-cursor-tracking/).
 It uses the same expression, motion, and continuous mouth protocol, so character
-switches preserve the current performance. Choose Girl from the dropdown, or use
+switches preserve the current performance. Its original facial artwork is animated
+through controller keyframes and lip-bone offsets. Choose Girl from the dropdown, or use
 `?character=girl` in the app URL.
 
 [View the native expression sheet](design/expression-studies/girl/v1-rendered.png)
-· [Design / rig comparison](design/expression-studies/girl/v2-comparison.png)
 · [Download the Rive Editor project](public/girl-expressive.rev)
 
 ## Quick start

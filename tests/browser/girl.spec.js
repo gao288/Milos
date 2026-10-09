@@ -67,15 +67,15 @@ test('Girl native rig clips white eyes when blinking and separates speech from e
   await page.waitForTimeout(700);
   const counts=[];
   for(const openness of [1,.5,0,1]) {
-    await page.evaluate(value=>window.girlProbe.properties.eyeOpen.value=value,openness);
+    await page.evaluate(value=>window.girlProbe.properties.nativeBlink.value=1-1.56*value,openness);
     await page.waitForTimeout(120);
     const capture=(await page.locator('#girl-probe').screenshot()).toString('base64');
     counts.push(await page.evaluate(async data=>{
       const img=new Image();img.src='data:image/png;base64,'+data;await img.decode();
       const c=document.createElement('canvas');c.width=c.height=600;const ctx=c.getContext('2d');ctx.drawImage(img,0,0);
-      // Limit the measurement to the eyes; the source also has a white nose highlight.
+      // Original eye whites are lilac (#ebe1f6). Exclude the white nose highlight.
       const pixels=ctx.getImageData(140,220,190,75).data;let white=0;
-      for(let i=0;i<pixels.length;i+=4)if(pixels[i]>248&&pixels[i+1]>248&&pixels[i+2]>248)white++;
+      for(let i=0;i<pixels.length;i+=4)if(Math.abs(pixels[i]-235)<7&&Math.abs(pixels[i+1]-225)<7&&Math.abs(pixels[i+2]-246)<7)white++;
       return white;
     },capture));
   }
@@ -86,10 +86,10 @@ test('Girl native rig clips white eyes when blinking and separates speech from e
   await page.evaluate(()=>{
     const p=window.girlProbe.properties;
     p.emotion.value=6;p.intensity.value=1;p.speechWeight.value=1;p.restWeight.value=0;
-    p.lowerCenterY.value=34;p.jawY.value=12;
+    p.girlLowerCenterY.value=34;p.jawY.value=12;
   });
   await page.waitForTimeout(450);
-  expect(await page.evaluate(()=>window.girlProbe.properties.lowerCenterY.value)).toBe(34);
+  expect(await page.evaluate(()=>window.girlProbe.properties.girlLowerCenterY.value)).toBe(34);
   expect(await page.evaluate(()=>window.girlProbe.properties.emotion.value)).toBe(6);
   await page.evaluate(()=>{window.girlProbe.dispose();document.querySelector('#girl-probe').remove();});
 });
