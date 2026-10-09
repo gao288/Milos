@@ -6,6 +6,14 @@
 
 Milos connects streaming speech, emotion inference, and continuous facial animation through a shared, renderer-independent interface. Swap the character, animation engine, or voice provider while keeping the same control protocol.
 
+## Demo
+
+[![Milos demo — click to watch the full video with sound](docs/assets/demo-preview.gif)](https://raw.githubusercontent.com/gao288/Milos/main/docs/assets/demo.mp4)
+
+**[Watch the full demo with sound (67 seconds)](https://raw.githubusercontent.com/gao288/Milos/main/docs/assets/demo.mp4)** · The preview above is a silent, 16-second excerpt.
+
+## Expressions
+
 ![Twelve expression variations rendered from the native Follow V2 Rive rig](design/expression-studies/follow-v2-rendered.png)
 
 *Native Follow V2 expressions, adapted from [Interactive Character Follow](https://rive.app/marketplace/28334-53514-interactive-character-follow/) by alinazari, licensed under CC BY 4.0.*
