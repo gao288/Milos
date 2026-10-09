@@ -148,13 +148,13 @@ test("continuous quiet packets cannot animate the mouth; speech resumes after si
   }
   expect(modelCalls).toBe(0);
   voice.audio(pcm);
-  await expect.poll(() => page.evaluate(() => window.avatar.getFrame().performance?.weight ?? 0)).toBeGreaterThan(.8);
+  await expect.poll(() => page.evaluate(() => window.avatar.getFrame().performance?.weight ?? 0), { intervals: [50, 100] }).toBeGreaterThan(.8);
   for (let i = 0; i < 8; i++) { voice.audio(Buffer.alloc(6400)); await page.waitForTimeout(200); }
   await expect.poll(() => page.evaluate(() => window.avatar.getFrame().performance)).toBeNull();
   await page.waitForTimeout(400);
   expect(await page.evaluate(() => window.avatar.getFrame().performance)).toBeNull();
   voice.audio(pcm);
-  await expect.poll(() => page.evaluate(() => window.avatar.getFrame().performance?.weight ?? 0)).toBeGreaterThan(.8);
+  await expect.poll(() => page.evaluate(() => window.avatar.getFrame().performance?.weight ?? 0), { intervals: [50, 100] }).toBeGreaterThan(.8);
   await page.locator("#voice-stop").click();
 });
 
@@ -288,12 +288,26 @@ test("Speech Engine buffers each turn once and joins packets arriving shortly be
     AudioBufferSourceNode.prototype.start = function(at, ...args) {
       if (this.buffer && this.context !== window.fixtureMicContext) {
         window.outputContext = this.context;
-        window.scheduledVoice.push({ at, duration: this.buffer.duration, now: this.context.currentTime });
+        window.scheduledVoice.push({ at, duration: this.buffer.duration, now: window.lastVoiceScheduleTime });
       }
       return start.call(this, at, ...args);
     };
   });
   const voice = await setup(page, { output: 'engine' });
+  await page.evaluate(async () => {
+    // Reuse the app's exact module URL, including Vite's HMR version query.
+    const url = performance.getEntriesByType('resource').find(entry =>
+      new URL(entry.name).pathname === '/src/voice/timeline.js')?.name;
+    if (!url) throw Error('Voice timeline module was not loaded');
+    const { PlayoutMap } = await import(url);
+    const append = PlayoutMap.prototype.append;
+    PlayoutMap.prototype.append = function(samples, now, ...args) {
+      // Compare with the time used for scheduling, not a later AudioContext
+      // read after buffer creation (the audio thread advances independently).
+      window.lastVoiceScheduleTime = now;
+      return append.call(this, samples, now, ...args);
+    };
+  });
   await expect(page.locator('#voice-buffer')).toHaveValue('300');
   const packet = { type: 'audio', audio_event: { event_id: 1, audio_base_64: pcm.toString('base64') } };
   voice.event(packet);
