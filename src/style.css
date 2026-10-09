@@ -23,3 +23,7 @@ button:disabled,input:disabled{cursor:not-allowed}
 
 .language-toggle{flex-shrink:0;min-width:76px;min-height:38px}
 @media(max-width:700px){header{gap:12px;flex-wrap:wrap}.top-right{gap:10px;flex-wrap:wrap}.top-right>span{display:none}.voice-output-switch>.btn{white-space:normal}.actions{flex-wrap:wrap}.control label{gap:8px}.jev-values dd{overflow-wrap:anywhere}}
+
+.girl-stage{background:#f5f1fc}
+.girl-stage #avatar{width:100%;height:100%;top:0}
+.girl-stage .orbit{display:none}

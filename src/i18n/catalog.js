@@ -83,3 +83,9 @@ messages.push(
 ['，请检查 key、音色权限和额度','; check key, voice access and quota'],['ElevenLabs 音频过长','ElevenLabs audio is too long'],['ElevenLabs 返回了空音频','ElevenLabs returned empty audio']
 );
 englishMessages.push(['Animation could not load. ','动画加载失败。']);
+
+messages.push(
+['Girl · 12 个表情造型', 'Girl · 12 expression poses'],
+['七种情绪、12 个表情造型；眉眼、嘴形与头部动作分别控制。', 'Seven emotions, twelve expression poses, with independent face, speech, and head controls.'],
+['下载 Girl 编辑器工程', 'Download Girl editor project']
+);

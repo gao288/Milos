@@ -22,6 +22,29 @@ The app supplies pointer coordinates from normalized motion events and maps mode
 face channels to the added geometry. Modified artwork retains CC BY 4.0 attribution.
 No affiliation with or endorsement by the creator is implied.
 
+## Girl Animation (Cursor Tracking)
+
+- Creator: **marvin.te**
+- Original work: https://rive.app/marketplace/19397-36522-girl-animation-cursor-tracking/
+- License: [Creative Commons Attribution 4.0 International (CC BY 4.0)](https://creativecommons.org/licenses/by/4.0/)
+- Source imported from the user's editable Rive copy, file `2221939`.
+- Preserved source: `rive-girl/source/original.xml`.
+- Adapted assets: `rive-girl/scene.rml`, `src/assets/girl-expressive.riv`, and the matching `.riv` / `.rev` files in `public/`.
+
+Modifications preserve the original character artwork and pose controllers, add
+seven expression states with twelve authored poses, replace eye and mouth artwork
+with parameterized geometry, and connect continuous lip/jaw control to Milos.
+The original cloud file is not overwritten. Modified character artwork retains
+CC BY 4.0 attribution; no endorsement by its creator is implied.
+
+`rive-girl/Inter.ttf` was included with the editable source. Inter is licensed under
+the SIL Open Font License 1.1; its license is included as `rive-girl/Inter-LICENSE.txt`.
+
+`design/expression-studies/girl/v1.png` is an imagegen concept sheet based on a
+native screenshot of this character. `v1-rendered.png` contains actual native Rive
+renders of the implemented poses. The concept sheet is not a pixel-exact rendering
+guarantee.
+
 ## UniTalker ONNX provider
 
 - Upstream integration: https://github.com/dlp3d-ai/audio2face

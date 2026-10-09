@@ -20,6 +20,7 @@ import { milo } from "./characters/milo.js";
 import { miloBasic } from "./characters/milo-basic.js";
 import { followClassic } from "./characters/follow-classic.js";
 import { followPresets } from "./characters/follow-presets.js";
+import { girl } from './characters/girl.js';
 import { interactiveFollow } from "./characters/interactive-follow.js";
 import { MouthLab } from "./mouth-lab.js";
 import { AudioLab } from "./audio-lab.js";
@@ -121,6 +122,7 @@ $("#app").innerHTML =
 }</textarea><button class="btn" id="send-event">发送事件</button><p class="helper">window.avatar.dispatch(event)<br>window.avatar.pushText(chunk, final)</p></details></div><div id="status" role="status">正在加载 Rive 状态机…</div></div><p class="side-note">表情层与嘴形层独立运行。<br>切换角色时，表情与嘴形继续运行。</p></aside></div><footer><span>MILO LAB &nbsp; / &nbsp; Built for a more expressive connection.</span><span>Layered expressions · State & viseme protocol · v0.4</span></footer></main>`;
 const runtime = new AvatarRuntime();
 $("#character").add(new Option("Follow V2 · 12 个表情造型", "follow"));
+$("#character").add(new Option("Girl · 12 个表情造型", "girl"));
 $("#character").add(new Option("Follow Classic · 升级前对比", "follow-classic"));
 $("#stage").insertAdjacentHTML("afterend", `
   <section id="follow-info" class="panel follow-info hidden">
@@ -132,6 +134,14 @@ $("#stage").insertAdjacentHTML("afterend", `
       · 改编：保留角色与跟随动画，新增表情状态和语音嘴形。
       <span>V2 编辑器工程：等待 Rive 登录后导出</span> · <a href="/follow-classic.rev" download>下载升级前工程</a>
     </p>
+  </section>`);
+$("#stage").insertAdjacentHTML("afterend", `
+  <section id="girl-info" class="panel hidden">
+    <strong>Girl · 12 expression poses</strong>
+    <p>七种情绪、12 个表情造型；眉眼、嘴形与头部动作分别控制。</p>
+    <p class="helper"><a href="https://rive.app/marketplace/19397-36522-girl-animation-cursor-tracking/" target="_blank" rel="noopener noreferrer">marvin.te · Girl Animation (Cursor Tracking)</a>
+      · <a href="https://creativecommons.org/licenses/by/4.0/" target="_blank" rel="noopener noreferrer">CC BY 4.0</a>
+      · <a href="/girl-expressive.rev" download>下载 Girl 编辑器工程</a></p>
   </section>`);
 // Keep the expression studies immediately below the avatar, ahead of voice labs.
 $("#stage").insertAdjacentElement("afterend", $("#expression-studio"));
@@ -149,6 +159,7 @@ let audioLab = null;
 let mouthLab = null;
 let voicePanel = null;
 const characters = new Map([
+  ["girl", { name: "Girl", create: () => new RiveAdapter(girl) }],
   ["follow-classic", { name: "Follow Classic", create: () => new RiveAdapter(followClassic) }],
   ["follow", { name: "Follow V2", create: () => new RiveAdapter(interactiveFollow) }],
   ["milo", { name: "Milo", create: () => new RiveAdapter(milo) }],
@@ -306,7 +317,9 @@ async function setCharacter(id) {
     const isFollow = id === "follow" || id === "follow-classic";
     $("#stage").classList.toggle("follow-stage", isFollow);
     $("#follow-info").classList.toggle("hidden", !isFollow);
-    $("#follow").checked = isFollow;
+    $("#girl-info").classList.toggle("hidden", id !== "girl");
+    $("#stage").classList.toggle("girl-stage", id === "girl");
+    $("#follow").checked = isFollow || id === "girl";
     document.querySelectorAll("[data-emotion], #intensity, #headTilt, #auto-blink, #idle-motion, #blink, #nod, #shake")
       .forEach((control) => { control.disabled = false; });
     $("#emotion-badge").textContent = emotion;
@@ -315,7 +328,7 @@ async function setCharacter(id) {
       : isFollow
       ? "原生转头、眨眼与表情层同时运行；语音模型控制连续嘴形，JEV 控制情绪和动作。"
       : "表情层与嘴形层独立运行。切换角色时，表情与嘴形继续运行。";
-    $("#expression-studio").classList.toggle("hidden", !["milo", "follow", "follow-classic"].includes(id));
+    $("#expression-studio").classList.toggle("hidden", !["milo", "follow", "follow-classic", "girl"].includes(id));
     stopDemo();
     $("#character").value = id;
     $("#character-name").textContent = entry.name;
@@ -457,7 +470,7 @@ function stopDemo() {
   $("#demo").textContent = "▷ 表情演示";
 }
 function applyPreset(id) {
-  const preset = character === "follow" ? (followPresets[id] ?? presets[id]) : (presets[id] ?? followPresets[id]);
+  const preset = ["follow", "girl"].includes(character) ? (followPresets[id] ?? presets[id]) : (presets[id] ?? followPresets[id]);
   if (!preset) throw Error("未知 preset");
   setFace({
     ...Object.fromEntries(facialControls.map(([k]) => [k, 0])),

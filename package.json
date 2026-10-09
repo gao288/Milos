@@ -18,7 +18,10 @@
     "test:model": ".venv/bin/python -m unittest discover -s server/tests",
     "rive:follow:build": "bash scripts/build-follow.sh",
     "rive:follow:export": "bash scripts/rive-cli.sh rive-follow --once --rev=public/follow-expressive.rev",
-    "serve:public": "vite preview --host 127.0.0.1 --port 5180 --strictPort"
+    "serve:public": "vite preview --host 127.0.0.1 --port 5180 --strictPort",
+    "rive:girl:build": "bash scripts/build-girl.sh",
+    "rive:girl:export": "bash scripts/rive-cli.sh rive-girl --once --rev=public/girl-expressive.rev",
+    "rive:girl:studies": "node scripts/render-follow-studies.mjs --girl"
   },
   "keywords": [
     "avatar",

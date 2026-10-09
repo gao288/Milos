@@ -10,7 +10,7 @@ Concept study for adding a second expressive character to Milos. Generated with 
 - `v1.png`: generated 12-pose design sheet.
 - `v1.prompt.txt`: exact generation prompt.
 
-The imported source compiles with zero errors and warnings. It already includes cursor tracking, head/body motion, a blink loop, and happy/delight animations. Its two Mouse X/Mouse Y view-model properties are not yet an adapter for the Milos emotion or continuous mouth protocols. Integration remains to be implemented after visual review.
+The imported source compiles with zero errors and warnings. It already includes cursor tracking, head/body motion, a blink loop, and happy/delight animations. Its two Mouse X/Mouse Y view-model properties are not yet an adapter for the Milos emotion or continuous mouth protocols. The approved design is now implemented in `rive-girl/`; the adapter and integration tests use the shared Milos interfaces.
 
 Proposed expression mapping:
 
@@ -24,4 +24,4 @@ Proposed expression mapping:
 | fear | Uneasy, terrified |
 | angry | Annoyed, furious |
 
-Keep stronger variants as intensity endpoints, with brows, lids, gaze, lips, and head posture contributing independently. Preserve the existing voice/mouth separation when implementing the new rig. Confirm the source artwork's creator and license before publishing its runtime assets; access to an editable account copy alone does not establish redistribution terms.
+Keep stronger variants as intensity endpoints, with brows, lids, gaze, lips, and head posture contributing independently. Preserve the existing voice/mouth separation when implementing the new rig. The original artwork is by marvin.te under CC BY 4.0; see THIRD_PARTY_NOTICES.md. `v1-rendered.png` is the actual native expression sheet.

@@ -93,3 +93,24 @@ Set `RIVE_CLI` for these commands too if your CLI is outside the default `.tools
 For visual comparison, run `node scripts/render-follow-studies.mjs` against the running app. `design/expression-studies/follow-v2-rendered.png` shows native rendered poses; `follow-v1.png` is concept art, not a runtime screenshot.
 
 Use Follow Classic in the UI for an immediate visual fallback. For code rollback, use `git revert <commit>` to preserve subsequent work and history.
+
+## Girl rig
+
+Girl uses the same seven emotion names and intensity stops as Follow V2. Its
+adapter is `src/characters/girl.js`; `scripts/generate_girl.py` extends the preserved
+source in `rive-girl/source/original.xml`. The original hair, face, and body pose
+controllers are retained, while new native eye and lip geometry supports stronger
+expressions and a shared continuous articulation solver. The original nose detail
+is retained; its separate wrinkle control is not mapped in this first Girl rig.
+
+```sh
+npm run rive:girl:build
+npm run rive:girl:export   # Requires a Rive CLI login
+npm run rive:girl:studies  # Generates the native expression contact sheet
+```
+
+The generator overwrites `rive-girl/scene.rml`; edit the generator for durable
+changes. The shipped `public/girl-expressive.rev` is the current editable handoff,
+validated by importing it into a fresh CLI project and compiling it. This local
+project has no cloud push target, so it does not overwrite the user's original
+Girl file. Attribution and the embedded font license are recorded in the notices.

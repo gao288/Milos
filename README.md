@@ -25,10 +25,21 @@ Milos connects streaming speech, emotion inference, and continuous facial animat
 - **Voice conversations:** GPT-Live, experimental ElevenLabs revoicing, and experimental Speech Engine with a separate streaming language model.
 - **Text-driven emotion:** JEV reads reply text and recent context to suggest emotion, intensity, head tilt, and gestures. Live output is inspectable in the UI.
 - **Natural motion:** breathing, blinking, gaze, idle head movement, and interruptible gestures.
-- **Interchangeable renderers:** Follow and Milo Rive characters plus a Canvas example; expressions and speech share the same runtime contract.
+- **Interchangeable renderers:** Follow, Girl, and Milo Rive characters plus a Canvas example; expressions and speech share the same runtime contract.
 - **English / 中文 interface:** instant switching with a remembered preference. English and Mandarin speech samples are included.
 
 The project is a working development playground and reusable source framework. Voice integrations are experimental; it is not yet a published npm package or a production multi-user service.
+
+### Girl character
+
+The character selector also includes **Girl · 12 expression poses**, adapted from
+[marvin.te’s Girl Animation (Cursor Tracking)](https://rive.app/marketplace/19397-36522-girl-animation-cursor-tracking/).
+It uses the same expression, motion, and continuous mouth protocol, so character
+switches preserve the current performance. Choose Girl from the dropdown, or use
+`?character=girl` in the app URL.
+
+[View the native expression sheet](design/expression-studies/girl/v1-rendered.png)
+· [Download the Rive Editor project](public/girl-expressive.rev)
 
 ## Quick start
 
