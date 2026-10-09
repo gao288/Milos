@@ -11,8 +11,9 @@
 
 `src/assets/interactive-follow.riv` remains the unmodified original runtime asset.
 `rive-follow/` and `src/assets/follow-expressive.riv` are modified versions based on
-an editable copy supplied by the user (Rive file 2624622). Modifications add six
-expression states, parameterized mouth geometry, eyebrows, eyelids, cheek controls,
+an editable copy supplied by the user (Rive file 2624622). Modifications add seven
+expression states (including fear), twelve Follow V2 pose variations, parameterized
+mouth geometry, eyebrows, eyelids, cheek controls,
 and independent speech/gesture bindings. A subsequent revision adds eight cubic
 lip controls driven by 27 mouth blendshape channels, jaw skinning on the original
 face/shadow contours, and separately clipped upper/lower teeth and tongue.

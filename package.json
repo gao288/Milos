@@ -1,11 +1,7 @@
 {
   "name": "realpet",
   "version": "1.0.0",
-  "description": "",
-  "main": "index.js",
-  "directories": {
-    "test": "tests"
-  },
+  "description": "An expressive avatar framework for real-time voice conversations, with Rive animation and interchangeable speech and facial-performance providers.",
   "scripts": {
     "voice:serve": "node --env-file-if-exists=.env server/voice.mjs",
     "speech-engine:setup": "node --env-file-if-exists=.env scripts/setup-speech-engine.mjs",
@@ -24,8 +20,16 @@
     "rive:follow:export": "bash scripts/rive-cli.sh rive-follow --once --rev=public/follow-expressive.rev",
     "serve:public": "vite preview --host 127.0.0.1 --port 5180 --strictPort"
   },
-  "keywords": [],
-  "author": "",
+  "keywords": [
+    "avatar",
+    "rive",
+    "voice",
+    "animation",
+    "lip-sync",
+    "realtime",
+    "speech"
+  ],
+  "author": "gao288",
   "license": "ISC",
   "type": "module",
   "dependencies": {
@@ -42,5 +46,8 @@
     "@playwright/test": "^1.63.0",
     "vite": "^8.3.1"
   },
-  "private": true
+  "private": true,
+  "engines": {
+    "node": ">=22.12.0"
+  }
 }
