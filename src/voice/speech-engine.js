@@ -9,6 +9,7 @@ export class SpeechEngineOutput {
     this.pendingText = ""; this.hasAlignment = false; this.muted = false;
     this.queue = []; this.queuedSamples = 0;
     this.fallbackUsed = false;
+    this.captionTagOpen = false;
   }
   async connect() {
     const o = this.owner, generation = o.generation;
@@ -41,6 +42,7 @@ export class SpeechEngineOutput {
     if (event.type === "user_transcript") {
       this.muted = false; this.pendingText = ""; this.hasAlignment = false;
       this.fallbackUsed = false;
+      this.captionTagOpen = false;
       const text = event.user_transcription_event?.user_transcript;
       if (text) {
         const ms = (now - o.sessionOrigin) * 1000;
@@ -108,7 +110,16 @@ export class SpeechEngineOutput {
     const fragment = { role: "assistant", text, startMs: base + Math.min(start, duration),
       endMs: base + Math.min(Math.max(start + 1, end), duration) };
     rememberSpeech(o.history, fragment);
-    o.fragments.push(fragment); o.captions.push(fragment);
+    o.fragments.push(fragment);
+    // Audio tags can themselves be split across aligned packets. JEV sees
+    // them as delivery context, but captions only show the spoken words.
+    let caption = "";
+    for (const char of text) {
+      if (char === "[") this.captionTagOpen = true;
+      else if (char === "]" && this.captionTagOpen) this.captionTagOpen = false;
+      else if (!this.captionTagOpen) caption += char;
+    }
+    if (caption) o.captions.push({ ...fragment, text: caption });
     if (o.fragments.length > 200) o.fragments.shift();
     if (o.captions.length > 200) o.captions.shift();
   }
@@ -117,6 +128,7 @@ export class SpeechEngineOutput {
     this.pendingText = ""; this.hasAlignment = false;
     this.queue = []; this.queuedSamples = 0;
     this.fallbackUsed = false;
+    this.captionTagOpen = false;
     // Manual button silences this response until a new user turn. Microphone
     // interruption/LLM cancellation is managed by Speech Engine itself.
     if (!fromProvider) this.muted = true;

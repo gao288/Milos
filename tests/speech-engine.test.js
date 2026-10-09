@@ -78,3 +78,12 @@ test("fast TTS bursts are paced into the mouth window and interruption empties a
   output.interrupt(true); assert.equal(output.queue.length, 0); assert.equal(output.queuedSamples, 0);
   owner.context.currentTime = 5; output.tick(); assert.equal(plays, 2);
 });
+
+test("split delivery tags stay available to JEV but never leak into captions", () => {
+  const owner = { sessionOrigin: 0, map: { delay: .8 }, history: [], fragments: [], captions: [] };
+  const output = new SpeechEngineOutput(owner);
+  output.fragment("[ha", { at: 1, end: 1.5 }, 0, 300);
+  output.fragment("ppy] Hello!", { at: 1.5, end: 2 }, 0, 500);
+  assert.equal(owner.captions.map(f => f.text).join(""), " Hello!");
+  assert.equal(owner.fragments.map(f => f.text).join(""), "[happy] Hello!");
+});

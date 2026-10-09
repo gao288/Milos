@@ -74,6 +74,8 @@ npm run voice:serve
 
 setup 首次创建资源，随后只更新 .env 指定的实验资源，将 ID/回调保存到被 Git 忽略的 .env。普通服务器重启不修改远端资源。临时隧道重建后域名会变，需要重新 setup；这不是常驻生产部署。网页仍使用原来的 Tailscale HTTPS 入口，不修改已有服务。
 
+验证：46 个 Node 测试、11 个语音浏览器测试及生产构建通过。真实账号已用中英文音频样本跑通识别 → 文本流 → 分块语音 → 字幕/JEV/UniTalker；通过现有 HTTPS 页面验证两轮英语对话和一次语音插话，收到 interruption/response correction 后仍能继续回复。字幕隐藏跨包的音频表演标签，JEV 保留它们作为语气上下文。中文样本存在识别错误；真实麦克风、回声环境、主观音质和延迟仍需设备体验，不把这些测试当作性能基准。
+
 实现：`server/speech-engine.mjs`（认证回调与流式 LLM）、`src/voice/speech-engine.js`（播放/对齐适配）、`scripts/setup-speech-engine.mjs`（资源配置）。官方参考：[Speech Engine quickstart](https://elevenlabs.io/docs/eleven-api/guides/cookbooks/speech-engine)、[WebSocket 事件](https://elevenlabs.io/docs/eleven-agents/libraries/web-sockets)。
 
 可替换组件：`server/jev.mjs`（情绪 provider）、`server/voice.mjs`（语音连接与 P1 委派占位）、`src/voice/controller.js`（编排）、`src/voice/timeline.js`（播放与动作时间线）。头像仍消费 `expression` 与 `arkit-52-v1`，不依赖供应商 API。
