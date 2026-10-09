@@ -10,6 +10,7 @@ export class SpeechEngineOutput {
     this.queue = []; this.queuedSamples = 0;
     this.fallbackUsed = false;
     this.captionTagOpen = false;
+    this.startOfTurn = true;
   }
   async connect() {
     const o = this.owner, generation = o.generation;
@@ -40,6 +41,7 @@ export class SpeechEngineOutput {
       o.interrupt(true); return;
     }
     if (event.type === "user_transcript") {
+      this.startOfTurn = true;
       this.muted = false; this.pendingText = ""; this.hasAlignment = false;
       this.fallbackUsed = false;
       this.captionTagOpen = false;
@@ -72,7 +74,8 @@ export class SpeechEngineOutput {
       if (audio.alignment?.chars?.length) { this.hasAlignment = true; this.pendingText = ""; }
       const samples = pcmDecode(audio.audio_base_64);
       if (this.queuedSamples + samples.length > 16000 * 60) throw Error("Speech Engine 回复缓冲超过一分钟，请重连");
-      this.queue.push({ audio, samples }); this.queuedSamples += samples.length;
+      this.queue.push({ audio, samples, startOfTurn: this.startOfTurn }); this.queuedSamples += samples.length;
+      this.startOfTurn = false;
       this.tick();
       return;
     }
@@ -83,8 +86,8 @@ export class SpeechEngineOutput {
     // TTS can arrive much faster than playback. Feed only the near-future PCM
     // into the rolling mouth model, so fast generation cannot evict unplayed lips.
     while (this.queue.length && o.map.next < o.context.currentTime + o.map.delay + .25) {
-      const { audio, samples } = this.queue.shift(); this.queuedSamples -= samples.length;
-      const slot = o.playPCM(samples, { maxQueueSeconds: 30 });
+      const { audio, samples, startOfTurn } = this.queue.shift(); this.queuedSamples -= samples.length;
+      const slot = o.playPCM(samples, { maxQueueSeconds: 30, continuous: true, startOfTurn });
       const a = audio.alignment;
       if (a?.chars?.length && !this.fallbackUsed) {
         this.hasAlignment = true; this.pendingText = "";
@@ -124,6 +127,7 @@ export class SpeechEngineOutput {
     if (o.captions.length > 200) o.captions.shift();
   }
   interrupt(fromProvider) {
+    this.startOfTurn = true;
     this.cutoff = Math.max(this.cutoff, this.lastEvent);
     this.pendingText = ""; this.hasAlignment = false;
     this.queue = []; this.queuedSamples = 0;

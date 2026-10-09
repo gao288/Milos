@@ -61,6 +61,7 @@ export class VoicePanel {
     const times = { user: -Infinity, assistant: -Infinity };
     this.metrics = {};
     this.output = "live";
+    this.buffers = { live: 800, eleven: 800, engine: 300 };
     this.controller = new VoiceController({ avatar,
       onStatus: (text, error = false) => { this.$("voice-status").textContent = text; this.$("voice-status").classList.toggle("error", error); },
       onActive: active => {
@@ -96,9 +97,14 @@ export class VoicePanel {
         this.$("voice-metrics").textContent = `JEV 判定 ${m.prediction ?? "—"}（置信度 ${m.predictionConfidence?.toFixed(2) ?? "—"}） · 当前情绪 ${m.emotion ?? "—"} · 强度 ${m.intensity?.toFixed(2) ?? "—"} · JEV ${m.inferenceMs ?? "—"} ms · 嘴形 ${m.mouthMs ?? "—"} ms · 情绪应用偏移 ${m.lateMs ?? "—"} ms（估计）`;
       },
     });
-    this.$("voice-buffer").oninput = e => { this.$("voice-buffer-value").textContent = e.target.value + " ms"; };
+    this.$("voice-buffer").oninput = e => {
+      this.buffers[this.output] = Number(e.target.value);
+      this.$("voice-buffer-value").textContent = e.target.value + " ms";
+    };
     for (const mode of ["live", "eleven", "engine"]) this.$(`voice-output-${mode}`).onclick = () => {
       this.output = mode;
+      this.$("voice-buffer").value = this.buffers[mode];
+      this.$("voice-buffer-value").textContent = this.buffers[mode] + " ms";
       for (const name of ["live", "eleven", "engine"]) this.$(`voice-output-${name}`).setAttribute("aria-pressed", String(name === mode));
       this.updateOutputNote();
     };

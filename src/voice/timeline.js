@@ -31,8 +31,12 @@ export function transcriptFragment(event) {
 export class PlayoutMap {
   constructor(delay = 0.8, rate = 16000) { this.delay = delay; this.rate = rate; this.clear(); }
   clear() { this.slots = []; this.samples = 0; this.next = 0; }
-  append(length, now) {
-    const at = Math.max(this.next, now + this.delay);
+  append(length, now, { continuous = false, startOfTurn = false } = {}) {
+    // A streaming TTS turn buffers once. Later packets join the already
+    // scheduled audio; replenishing the full buffer here inserts artificial
+    // pauses even when the next packet arrived before playback ran out.
+    const lead = continuous && !startOfTurn && this.slots.length ? 0.02 : this.delay;
+    const at = Math.max(this.next, now + lead);
     const slot = { sample: this.samples, length, at, end: at + length / this.rate };
     this.samples += length; this.next = slot.end; this.slots.push(slot);
     // Keep recent history for overlapping inference windows without unbounded growth.

@@ -105,9 +105,9 @@ export class VoiceController {
     } }, () => this.context.currentTime * 1000);
   }
   resetMouth() { this.pcm = new Float32Array(0); this.pcmStart = 0; this.inferredThrough = 0; this.lastMouthFrame = -1; this.mouthBusy = false; }
-  playPCM(samples, { infer = true, maxQueueSeconds = 5 } = {}) {
+  playPCM(samples, { infer = true, maxQueueSeconds = 5, continuous = false, startOfTurn = false } = {}) {
     const now = this.context.currentTime;
-    const slot = this.map.append(samples.length, now);
+    const slot = this.map.append(samples.length, now, { continuous, startOfTurn });
     slot.audible = pcmRms(samples) >= 0.008;
     this.envelope.append(samples, slot.at);
     if (slot.end - now > maxQueueSeconds) throw Error("播放队列过长，请结束并重连");

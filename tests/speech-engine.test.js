@@ -87,3 +87,37 @@ test("split delivery tags stay available to JEV but never leak into captions", (
   assert.equal(owner.captions.map(f => f.text).join(""), " Hello!");
   assert.equal(owner.fragments.map(f => f.text).join(""), "[happy] Hello!");
 });
+
+test("streaming TTS joins packets without restoring the initial buffer, including underrun and new turns", async () => {
+  const { PlayoutMap } = await import('../src/voice/timeline.js');
+  const map = new PlayoutMap(.8);
+  const a = map.append(7680, 0, { continuous: true, startOfTurn: true });
+  const b = map.append(7680, 1, { continuous: true });
+  assert.equal(a.at, .8);
+  assert.equal(b.at, a.end); // old behavior added a needless 520 ms gap here
+  assert.equal(map.timeForSample(7680), b.at);
+  const c = map.append(1600, 3, { continuous: true });
+  assert.equal(c.at, 3.02); // actual starvation recovers with 20 ms, not 800
+  const d = map.append(1600, 5, { continuous: true, startOfTurn: true });
+  assert.equal(d.at, 5.8);
+  map.clear();
+  assert.equal(map.append(1600, 10, { continuous: true }).at, 10.8);
+  const live = new PlayoutMap(.8);
+  live.append(7680, 0);
+  assert.equal(live.append(7680, 1).at, 1.8); // other providers retain their policy
+});
+
+test("engine pacing forwards new-turn boundaries to the playback clock", async () => {
+  const { PlayoutMap } = await import('../src/voice/timeline.js');
+  const owner = { context: { currentTime: 0 }, sessionOrigin: 0, map: new PlayoutMap(.3), history: [], fragments: [], captions: [], receive() {},
+    playPCM(samples, options) { return this.map.append(samples.length, this.context.currentTime, options); } };
+  const output = new SpeechEngineOutput(owner);
+  const packet = { type: 'audio', audio_event: { event_id: 1, audio_base_64: pcmEncode(new Float32Array(7680)) } };
+  output.receive(packet);
+  owner.context.currentTime = .6; output.receive(packet);
+  assert.equal(owner.map.slots[1].at, owner.map.slots[0].end);
+  owner.context.currentTime = 3;
+  output.receive({ type: 'user_transcript', user_transcription_event: { user_transcript: 'Next turn' } });
+  output.receive(packet);
+  assert.equal(owner.map.slots.at(-1).at, 3.3);
+});

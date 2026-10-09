@@ -14,6 +14,7 @@ export function engineConfig(env) {
     asr: { provider: "scribe_realtime", userInputAudioFormat: "pcm_16000" },
     tts: { modelId: env.SPEECH_ENGINE_TTS_MODEL || "eleven_v4_turbo", voiceId: env.ELEVENLABS_VOICE_ID,
       agentOutputAudioFormat: "pcm_16000", speed: 1, stability: 0.5 },
+    turn: { turnEagerness: "eager", speculativeTurn: false },
     conversation: { maxDurationSeconds: 600, clientEvents: ["audio", "interruption", "user_transcript", "agent_response", "agent_response_correction"] },
     privacy: { recordVoice: false, retentionDays: 1, deleteAudio: true, deleteTranscriptAndPii: true },
     callLimits: { agentConcurrencyLimit: 1, dailyLimit: 100, burstingEnabled: false },

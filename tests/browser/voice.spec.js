@@ -275,3 +275,32 @@ test("Speech Engine streams PCM into the same caption, JEV and mouth clock witho
   await page.locator("#voice-stop").click();
   await expect(page.locator("#voice-output-live")).toBeEnabled();
 });
+
+test("Speech Engine buffers each turn once and joins packets arriving shortly before playback ends", async ({ page }) => {
+  await page.addInitScript(() => {
+    window.scheduledVoice = [];
+    const start = AudioBufferSourceNode.prototype.start;
+    AudioBufferSourceNode.prototype.start = function(at, ...args) {
+      if (this.buffer && this.context !== window.fixtureMicContext) {
+        window.outputContext = this.context;
+        window.scheduledVoice.push({ at, duration: this.buffer.duration, now: this.context.currentTime });
+      }
+      return start.call(this, at, ...args);
+    };
+  });
+  const voice = await setup(page, { output: 'engine' });
+  await expect(page.locator('#voice-buffer')).toHaveValue('300');
+  const packet = { type: 'audio', audio_event: { event_id: 1, audio_base_64: pcm.toString('base64') } };
+  voice.event(packet);
+  await page.waitForFunction(() => window.scheduledVoice.length === 1 && window.outputContext.currentTime >= window.scheduledVoice[0].at + .85);
+  voice.event(packet);
+  await page.waitForFunction(() => window.scheduledVoice.length === 2);
+  const slots = await page.evaluate(() => window.scheduledVoice);
+  expect(slots[0].at - slots[0].now).toBeCloseTo(.3, 2);
+  expect(slots[1].at - slots[0].at - slots[0].duration).toBeCloseTo(0, 4);
+  await page.locator('#voice-stop').click();
+  await page.locator('#voice-output-live').click();
+  await expect(page.locator('#voice-buffer')).toHaveValue('800');
+  await page.locator('#voice-output-engine').click();
+  await expect(page.locator('#voice-buffer')).toHaveValue('300');
+});
