@@ -1,0 +1,20 @@
+Use case: stylized-concept.
+Asset type: a high-resolution character expression design sheet for approval BEFORE Rive rigging.
+Reference image: the attached native Rive render is an identity, silhouette, palette and illustration-style reference. Preserve the EXACT same young adult woman: vivid violet blunt bob haircut with a rounded voluminous side-swept fringe, pale pink-lilac skin, long elegant neck, pointed chin, almond eyes, dark indigo eyeliner and eyebrows, lilac lips, periwinkle scoop-neck shirt. Clean flat vector-like shapes with limited subtle lavender accents, no black outlines, no photorealism and no 3D. The screenshot has irises nearly hidden at the edge of the eyes; draw NORMAL visible deep-violet irises and pupils centered or intentionally directed in every new pose, never blank white eyes. Ignore reference canvas composition and cursor-following displacement.
+Primary request: one polished landscape animation model sheet arranged in a precise 4-column by 3-row grid of TWELVE clearly different bust expressions of THIS SAME woman. Each head and shoulders completely contained, generous gutter, consistent head size, light warm off-white background, restrained typography, no UI. Same recognizable bob silhouette and identity in every panel. Preserve hairstyle across head turns. Use gentle 3/4 view like the reference, with subtle deliberate head tilts.
+Title verbatim: "GIRL / EXPRESSION STUDIES"
+Subtitle verbatim: "12 proposed poses for Milos"
+Small numbered label under each bust, exact labels:
+01 REST — calm, soft asymmetric almond eyelids, relaxed brows, gently closed neutral lips.
+02 WARM SMILE — raised cheeks, visibly curved narrowed smiling eyes, lifted mouth corners, inviting small head tilt.
+03 BIG LAUGH — eyelids squeeze into broad joyful crescents, lifted cheeks, clearly open laughing mouth, head slightly back.
+04 CURIOUS — one eyebrow prominently raised, opposite eyebrow lower, one eye wider than the other, head tilted and small questioning pursed lips.
+05 EMPATHY — raised inner brows sloping down outward, soft lower lids, concerned gentle mouth, head inclined toward listener; warmth without a happy grin.
+06 HEARTBROKEN — very raised inner brows, drooping upper lids, downward gaze, downturned corners, bowed head; keep visible eyes, no tear accessories.
+07 SURPRISED — lifted rounded eyebrows, wide eyes and smaller irises, small circular O mouth, upright neck.
+08 AWE — attentive open eyes, high arched brows, delighted partly open smile, slight forward lean.
+09 UNEASY — tense raised and pinched inner brows, widened upper lids and tense lower lids, side glance, tight hesitant asymmetric lips, slight recoil.
+10 TERRIFIED — strongest fear, sharply peaked INNER eyebrows, dramatically wide eyes and reduced pupils, tension in lower lids, horizontally stretched open mouth with a simple upper tooth edge, head and neck recoiling. Must look clearly different from surprised.
+11 ANNOYED — low slanted brows, half-lidded sideways eyes, one-sided compressed mouth, skeptical head angle.
+12 FURIOUS — brows sharply down and inward, narrowed intense eyes, tense jaw with compressed lips or clenched teeth, chin slightly forward.
+Critical requirements: eyelid contours, eye openness, eyebrow shapes/angles and asymmetry must CHANGE substantially in every cell; not twelve identical eyes with different mouths. Expression strength is deliberately stronger than the original idle animation, still appealing and riggable using existing vector shapes. Expressions must remain legible at avatar size. Do not add sweat droplets, floating icons, props, hands, glasses, jewelry, text bubbles, dramatic tears or new characters. Do not change skin color or hair color between poses. Preserve mature stylized facial proportions from reference, not chibi or generic anime. Crisp professional character model sheet, with clearly readable labels and no overlapping busts.
