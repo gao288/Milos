@@ -2,6 +2,26 @@
 
 可替换角色与动画引擎的框架，附带 Vite 演示页。Milo/Rive 和 Sprout/Canvas 是两个适配器示例，输入层与核心控制器不依赖特定模型。页面右侧可以实时切换两者，保留表情与嘴形。
 
+## 界面语言与公开访问
+
+界面默认英文。右上角 **中文 / English** 按钮立即切换，选择保存在浏览器的 `realpet.locale`；禁用本地存储时仍可切换。切换不重建角色或音频连接，不改动用户输入、聊天字幕、原始 JEV JSON 或语音语言。词典在 `src/i18n/catalog.js`，`src/i18n/index.js` 将既有命令式界面的文本节点与可访问性标签绑定到词典；新增动态文案应补充词典，用户/模型内容用 `data-i18n-ignore` 标记。
+
+公开地址：**https://xufei-pc.tail110452.ts.net:10000/**。通过 Tailscale Funnel 提供 HTTPS，无需 Tailscale 账号、用户名或密码。任何访问者均可使用已配置的语音/模型服务，调用使用本机配置的 API 额度；当前语音服务仍有单会话并发限制。API key 保留在被 Git 忽略的 .env，不随构建发布。
+
+公开入口指向本机 5180 上的构建版本；原来的 7443 开发入口及其他 Tailscale 服务保持不变。后续修改代码，必须重新构建才能更新公开页面：
+
+```sh
+npm run build
+npm run serve:public   # 127.0.0.1:5180；另一个终端持续运行
+tailscale funnel --bg --https=10000 http://127.0.0.1:5180
+# 只关闭本应用的公开入口，不影响其他服务：
+tailscale funnel --https=10000 off
+```
+
+当前构建服务在后台运行，日志 `/tmp/realpet-public.log`。Funnel 配置会保留，但机器重启后仍需启动页面、语音和模型进程，以及 Speech Engine 使用的回调隧道。该部署是公开试验环境。
+
+验证：英文全界面/可访问性标签检查、刷新后的语言记忆、禁用 localStorage、手机布局，以及聊天中切换语言均通过。现有角色/音频回归加新增用例共 34 个浏览器用例通过（包含修复测试步骤后的定向重跑），48 个 Node 测试通过。通过公共 DNS 的 Funnel IP 验证 HTTPS 200、页面渲染、模型健康检查与 Speech Engine 短期会话接口；.env 和 Git 配置不会作为静态文件发布。
+
 ## GPT-Live 语音聊天与 JEV 情绪 v0.5
 
 页面「和我聊聊」已接好 GPT-Live WebSocket 桥接、麦克风采集、PCM 播放、流式字幕、JEV 情绪和 UniTalker 分块嘴形。

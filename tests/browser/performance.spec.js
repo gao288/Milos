@@ -1,5 +1,10 @@
 import { test, expect } from "@playwright/test";
 
+// Legacy behavior assertions intentionally exercise the Chinese locale.
+test.beforeEach(async ({ page }) => {
+  await page.addInitScript(() => localStorage.setItem('realpet.locale', 'zh'));
+});
+
 const clip = {
   schema: "arkit-52-v1", durationMs: 9000, fps: 30,
   provider: "test-fixture", device: "CPUExecutionProvider", inferenceMs: 10,

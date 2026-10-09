@@ -1,5 +1,10 @@
 import { test, expect } from "@playwright/test";
 
+// Legacy behavior assertions intentionally exercise the Chinese locale.
+test.beforeEach(async ({ page }) => {
+  await page.addInitScript(() => localStorage.setItem('realpet.locale', 'zh'));
+});
+
 test("expressive presets, facial controls and speech remain independent", async ({
   page,
 }) => {

@@ -72,6 +72,7 @@ export class VoicePanel {
         this.$("jev-applied").textContent = active ? "等待表情随播放应用" : "语音已停止";
       },
       onEmotionResult: ({ result, text, currentText, receivedAt }) => {
+        for (const id of ["jev-json", "jev-input", "jev-fragment"]) this.$(id).dataset.i18nIgnore = "";
         this.$("jev-updated").textContent = new Date(receivedAt).toLocaleTimeString();
         this.$("jev-prediction").textContent = describeEmotion(result.emotion);
         this.$("jev-strength").textContent = `${number(result.intensity)} / ${number(result.confidence)}`;
@@ -88,6 +89,7 @@ export class VoicePanel {
         if (fragment.startMs - times[fragment.role] > 1800) transcripts[fragment.role] = "";
         transcripts[fragment.role] = (transcripts[fragment.role] + fragment.text).slice(-500);
         times[fragment.role] = fragment.endMs;
+        this.$(`voice-${fragment.role}`).dataset.i18nIgnore = "";
         this.$(`voice-${fragment.role}`).textContent = transcripts[fragment.role];
       },
       onMetrics: update => {
@@ -109,6 +111,7 @@ export class VoicePanel {
       this.updateOutputNote();
     };
     this.$("voice-start").onclick = () => {
+      for (const id of ["jev-json", "jev-input", "jev-fragment"]) delete this.$(id).dataset.i18nIgnore;
       transcripts.user = transcripts.assistant = ""; times.user = times.assistant = -Infinity;
       this.metrics = {};
       this.$("voice-metrics").textContent = "情绪每 500 ms 检查新增文本；无新文本时保持。";

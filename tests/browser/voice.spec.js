@@ -1,4 +1,9 @@
 import { test, expect } from "@playwright/test";
+
+// Legacy behavior assertions intentionally exercise the Chinese locale.
+test.beforeEach(async ({ page }) => {
+  await page.addInitScript(() => localStorage.setItem('realpet.locale', 'zh'));
+});
 import { encodeWav } from "../../src/providers/audio-model.js";
 
 const health = { openaiConfigured: true, jevConfigured: true, token: "test-session", liveModel: "gpt-live-1", jevModel: "jev-1.13.0" };
@@ -303,4 +308,21 @@ test("Speech Engine buffers each turn once and joins packets arriving shortly be
   await expect(page.locator('#voice-buffer')).toHaveValue('800');
   await page.locator('#voice-output-engine').click();
   await expect(page.locator('#voice-buffer')).toHaveValue('300');
+});
+
+test('switching UI language during voice chat keeps the connection and original transcript', async ({page}) => {
+  await page.route('**/api/voice/emotion', route => route.fulfill({json:{emotion:'happy',intensity:.8,confidence:.95,inferenceMs:20}}));
+  const voice = await setup(page);
+  await page.locator('#ui-language').click();
+  await expect(page.locator('#voice-stop')).toHaveText('End chat');
+  await expect(page.locator('#voice-start')).toBeDisabled();
+  voice.speak();
+  await expect(page.locator('#voice-assistant')).toHaveText('Hello! 你好！');
+  await expect(page.locator('#jev-prediction')).toHaveText('Happy · happy');
+  await expect(page.locator('#jev-input')).toHaveText('Hello! 你好！');
+  await page.locator('#ui-language').click();
+  await expect(page.locator('#voice-assistant')).toHaveText('Hello! 你好！');
+  await expect(page.locator('#jev-prediction')).toHaveText('开心 · happy');
+  expect(voice.sent).not.toContain('session.close');
+  await page.locator('#voice-stop').click();
 });
