@@ -40,6 +40,7 @@ through controller keyframes and lip-bone offsets. Choose Girl from the dropdown
 `?character=girl` in the app URL.
 
 [View the native expression sheet](design/expression-studies/girl/v1-rendered.png)
+· [Compare the concept and current rig](design/expression-studies/girl/v1-comparison.png)
 · [Download the Rive Editor project](public/girl-expressive.rev)
 
 ## Quick start

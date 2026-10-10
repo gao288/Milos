@@ -1580,7 +1580,7 @@
                                             <Node x="-74.199646" y="-53.990662" name="Left cheek turn control" id="1:8376">
                                                 <Node name="Left cheek vertical" id="1:8375">
                                                     <Node name="Left cheek horizontal" id="1:8374">
-                                                        <Shape x="4.8265381" y="1.2849731" scaleX="1.5402944" scaleY="1.0772235" name="Cheek" id="1:5704" opacity="0.3">
+                                                        <Shape x="4.8265381" y="1.2849731" scaleX="1.5402944" scaleY="1.0772235" name="Cheek" id="1:5704" opacity="0">
                                                             <PointsPath isClosed="true" x="36.106445" y="-26.5" id="1:5707">
                                                                 <CubicMirroredVertex rotation="1.0393879" distance="21.030321" x="-2.4766428e-05" id="1:5709" />
                                                                 <CubicMirroredVertex rotation="2.6023772" distance="25.341911" x="-25.827332" y="55.681217" id="1:5711" />
@@ -2892,7 +2892,7 @@
                                             <Node x="-228.23254" y="-41.723083" name="Right cheek turn control" id="1:8412">
                                                 <Node name="Right cheek vertical" id="1:8411">
                                                     <Node name="Right cheek horizontal" id="1:8410">
-                                                        <Shape x="-12.482788" y="-10.873657" scaleX="0.65513813" scaleY="1.0772235" name="Right cheek" id="1:8400" opacity="0.3">
+                                                        <Shape x="-12.482788" y="-10.873657" scaleX="0.65513813" scaleY="1.0772235" name="Right cheek" id="1:8400" opacity="0">
                                                             <PointsPath isClosed="true" x="36.106445" y="-26.5" name="Path" id="1:8401">
                                                                 <CubicMirroredVertex rotation="1.0393879" distance="21.030321" x="-2.4766428e-05" name="Component" id="1:8402" />
                                                                 <CubicMirroredVertex rotation="2.6023772" distance="25.341911" x="-25.827332" y="55.681217" name="Component" id="1:8403" />
@@ -13721,10 +13721,10 @@
         <LinearAnimation name="Expression · warm" duration="42" fps="60" id="8:30349">
             <KeyedObject objectId="1:3052" id="8:30878">
                 <KeyedProperty propertyKey="299" id="8:30879">
-                    <KeyFrameDouble frame="0" value="-0.1" interpolationType="cubic" id="8:30880">
+                    <KeyFrameDouble frame="0" value="-0.85" interpolationType="cubic" id="8:30880">
                         <CubicEaseInterpolator x1="0.25" y1="0.6" x2="0.35" y2="1" id="8:30881" />
                     </KeyFrameDouble>
-                    <KeyFrameDouble frame="11" value="-0.43200000000000005" interpolationType="cubic" id="8:30882">
+                    <KeyFrameDouble frame="11" value="-0.352" interpolationType="cubic" id="8:30882">
                         <CubicEaseInterpolator x1="0.25" y1="0.6" x2="0.35" y2="1" id="8:30883" />
                     </KeyFrameDouble>
                     <KeyFrameDouble frame="24" value="-0.4" interpolationType="cubic" id="8:30884">
@@ -14637,10 +14637,10 @@
         <LinearAnimation name="Expression · happy" duration="42" fps="60" id="8:30350">
             <KeyedObject objectId="1:3052" id="8:31446">
                 <KeyedProperty propertyKey="299" id="8:31447">
-                    <KeyFrameDouble frame="0" value="0.25" interpolationType="cubic" id="8:31448">
+                    <KeyFrameDouble frame="0" value="-0.5" interpolationType="cubic" id="8:31448">
                         <CubicEaseInterpolator x1="0.25" y1="0.6" x2="0.35" y2="1" id="8:31449" />
                     </KeyFrameDouble>
-                    <KeyFrameDouble frame="11" value="1.08" interpolationType="cubic" id="8:31450">
+                    <KeyFrameDouble frame="11" value="1" interpolationType="cubic" id="8:31450">
                         <CubicEaseInterpolator x1="0.25" y1="0.6" x2="0.35" y2="1" id="8:31451" />
                     </KeyFrameDouble>
                     <KeyFrameDouble frame="24" value="1" interpolationType="cubic" id="8:31452">
@@ -19789,10 +19789,10 @@
         <LinearAnimation name="Expression · surprised" duration="42" fps="60" id="8:30355">
             <KeyedObject objectId="1:3052" id="8:34650">
                 <KeyedProperty propertyKey="299" id="8:34651">
-                    <KeyFrameDouble frame="0" value="-0.1" interpolationType="cubic" id="8:34652">
+                    <KeyFrameDouble frame="0" value="-0.85" interpolationType="cubic" id="8:34652">
                         <CubicEaseInterpolator x1="0.25" y1="0.6" x2="0.35" y2="1" id="8:34653" />
                     </KeyFrameDouble>
-                    <KeyFrameDouble frame="11" value="-0.43200000000000005" interpolationType="cubic" id="8:34654">
+                    <KeyFrameDouble frame="11" value="-0.352" interpolationType="cubic" id="8:34654">
                         <CubicEaseInterpolator x1="0.25" y1="0.6" x2="0.35" y2="1" id="8:34655" />
                     </KeyFrameDouble>
                     <KeyFrameDouble frame="24" value="-0.4" interpolationType="cubic" id="8:34656">

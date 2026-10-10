@@ -60,11 +60,10 @@ for id in ['1:18866','1:17698','1:6611']:find(id).set('opacity','0')
 # the pupil, and this renderer draws their feather hard-edged. The crisp
 # highlight strokes underneath (1:571 / 1:600) carry the glint on their own.
 for id in ['1:1167','1:1517']:find(id).set('opacity','0')
-# The cheek blush relies on a 27-strength feather. The native renderer honours
-# it; the web Canvas fallback does not and paints flat discs. Dropping these to
-# a low opacity keeps the native warmth while making the Canvas artefact faint.
-# The concept sheet shows no hard blush, so this loses nothing against it.
-for id in ['1:5704','1:8400']:find(id).set('opacity','0.3')
+# The cheek blush relies on a 27-strength feather. The web Canvas fallback
+# paints flat discs even at reduced opacity. Hide the glow copies while keeping
+# their original geometry available for an editor/rendering upgrade.
+for id in ['1:5704','1:8400']:find(id).set('opacity','0')
 sm=find('1:7');sm.set('name','Girl State Machine')
 # Existing blink/delight timelines stay editable, but the new expression layer
 # and framework blinking are their only live owners.
@@ -75,8 +74,8 @@ for c in list(find('1:533')):
     if c.tag=='DataBindContext':find('1:533').remove(c)
 for e in instance:
     # Rest calibration: the source default put the head in near profile. This
-    # cursor position lands on the concept sheet's three-quarter view, where
-    # both eyes and the full mouth read.
+    # cursor position makes both eyes and the mouth easier to read. Matching
+    # the concept's more frontal face still requires further rig tuning.
     if e.get('viewModelPropertyId')=='1:8624':e.set('propertyValue','1060')
     if e.get('viewModelPropertyId')=='1:8621':e.set('propertyValue','730')
 # Preserve bones and their world-space bind poses by leaving all original
@@ -89,8 +88,8 @@ manual=el(emotional,'Node',name='Head tilt and breath');bind(manual,'headTilt',1
 restore=el(manual,'Node',x=-640,y=-830);restore.append(character)
 
 
-# Keep every source Shape, PointsPath, vertex, fill and gradient. Only controller
-# transforms / timelines are added. Imported DrawRules hid the nested irises;
+# Keep every source Shape, PointsPath, vertex, fill and gradient component, with
+# the palette edits declared above. Imported DrawRules hid the nested irises;
 # make the original pupil/iris ordering explicit without redrawing either.
 for parent in list(r.iter()):
     for c in list(parent):
@@ -237,7 +236,7 @@ for name,state in states.items():
 el(entry,'StateTransition',stateToId=states['neutral'].get('id'))
 # Each pose animation is a gesture, not a still: the crossfade only covers the
 # first beat, then the features arrive on their own staggered curves. Faster
-# features lead, the head follows through, and everything settles by frame 36.
+# features lead, the head follows through, and everything settles by frame 42.
 SNAP=(.12,.9,.3,1);EASE=(.25,.6,.35,1);DRAG=(.3,.3,.4,1)
 onsets={
  'brow':  lambda v:[(0,.35*v,SNAP),(7,1.14*v,SNAP),(19,.97*v,EASE),(30,v,EASE)],
@@ -246,12 +245,18 @@ onsets={
  'mouth': lambda v:[(0,.25*v,EASE),(11,1.08*v,EASE),(24,v,EASE),(36,v,EASE)],
  'head':  lambda v:[(0,.1*v,DRAG),(16,.82*v,DRAG),(30,1.04*v,EASE),(42,v,EASE)],
 }
-def gesture(a,obj,prop,value,kind,rest=0):
+def gesture(a,obj,prop,value,kind,rest=0,limits=None):
     if abs(value-rest)<1e-6:return static(a,obj,prop,value)
-    track(a,obj,prop,onsets['eye'](value,rest) if kind=='eye' else onsets[kind](value))
+    # Native joy rests at -1, not zero. Animate the delta from its own rest
+    # value so a gentle smile doesn't start with a stronger unintended smile.
+    keys=(onsets['eye'](value,rest) if kind=='eye' else
+          [(f,rest+v,ease) for f,v,ease in onsets[kind](value-rest)])
+    if limits:
+        keys=[(f,max(limits[0],min(limits[1],v)),ease) for f,v,ease in keys]
+    track(a,obj,prop,keys)
 for name,p in poses.items():
     a=anims[name]
-    gesture(a,find('1:3052'),299,-1+2*p['happy'],'mouth',-1)
+    gesture(a,find('1:3052'),299,-1+2*p['happy'],'mouth',-1,limits=(-1,1))
     for side in ['Left','Right']:
         gesture(a,eyes[side],17,p['eye'+side[0]],'eye',1)
         gesture(a,brows[side],14,p['brow'+side[0]],'brow')

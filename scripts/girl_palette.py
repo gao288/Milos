@@ -12,7 +12,7 @@ No geometry, no path, no new artwork — the guard checks that separately.
 # component id -> (source colour, calibrated colour, what it paints)
 PALETTE = {
     # Eyes: the concept's dark indigo pupil and saturated iris ring. The source
-    # pupil was lighter than its own iris, which read as a washed-out dot.
+    # pupil had too little contrast, which read as a washed-out dot.
     '1:77':    ('FFCA8EF6', 'FF5C3BEA', 'near iris'),
     '1:96':    ('FF9558C2', 'FF171A85', 'near pupil'),
     '1:177':   ('FFC398E2', 'FF6B4BEE', 'far iris'),
@@ -33,7 +33,7 @@ PALETTE = {
     '1:16594': ('FFFFD9FB', 'FFFDDCF3', 'neck'),
     '1:5040':  ('FFFFD9FB', 'FFFDDCF3', 'nose'),
     '1:6192':  ('FFFFD9FB', 'FFFDDCF3', 'ear'),
-    # Hair matches the concept's electric violet exactly.
+    # Hair moves toward the concept's electric violet.
     '1:16039': ('FF743BFF', 'FF6D36F9', 'hair back'),
     '1:8783':  ('FF743BFF', 'FF6D36F9', 'hair front 1'),
     '1:8814':  ('FF743BFF', 'FF6D36F9', 'hair front 2'),

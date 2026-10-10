@@ -44,11 +44,11 @@ try {
     .pair{display:flex;gap:4px}.cell{flex:1;min-width:0}
     .concept{width:100%;height:178px;background-repeat:no-repeat;background-color:#fdfaf8}
     .shot{height:178px;overflow:hidden;position:relative;background:#fdfaf8}
-    .shot img{position:absolute;width:258px;height:258px;left:-30px;top:-22px}
+    .shot img{position:absolute;width:258px;height:258px;left:-60px;top:-40px}
     em{display:block;text-align:center;font-size:10px;color:#86867f;font-style:normal;margin-top:2px}
     b{display:block;text-align:center;font-weight:500;font-size:12px;margin-top:5px}
     .strip{display:grid;grid-template-columns:repeat(8,1fr);gap:6px}
-    .shot.sm{height:140px}.shot.sm img{width:250px;height:250px;left:-42px;top:-26px}
+    .shot.sm{height:140px}.shot.sm img{width:250px;height:250px;left:-50px;top:-26px}
     figure{margin:0}
   </style>
   <h1>GIRL / CONCEPT vs NATIVE RIVE</h1>
