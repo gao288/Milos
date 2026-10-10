@@ -21,7 +21,8 @@
     "serve:public": "vite preview --host 127.0.0.1 --port 5180 --strictPort",
     "rive:girl:build": "bash scripts/build-girl.sh",
     "rive:girl:export": "bash scripts/rive-cli.sh rive-girl --once --rev=public/girl-expressive.rev",
-    "rive:girl:studies": "node scripts/render-follow-studies.mjs --girl"
+    "rive:girl:studies": "node scripts/render-follow-studies.mjs --girl",
+    "live2d:setup": "node scripts/setup-live2d.mjs"
   },
   "keywords": [
     "avatar",
@@ -43,6 +44,8 @@
     "@rive-app/canvas": "^2.44.0",
     "openai": "^7.30.1",
     "pinyin-pro": "^3.29.4",
+    "pixi-live2d-display": "0.4.0",
+    "pixi.js": "6.5.10",
     "ws": "^8.22.0"
   },
   "devDependencies": {
@@ -60,5 +63,10 @@
   "homepage": "https://github.com/gao288/Milos#readme",
   "bugs": {
     "url": "https://github.com/gao288/Milos/issues"
+  },
+  "overrides": {
+    "pixi-live2d-display": {
+      "gh-pages": "6.1.1"
+    }
   }
 }

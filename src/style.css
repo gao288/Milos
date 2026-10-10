@@ -27,3 +27,7 @@ button:disabled,input:disabled{cursor:not-allowed}
 .girl-stage{background:#f5f1fc}
 .girl-stage #avatar{width:100%;height:100%;top:0}
 .girl-stage .orbit{display:none}
+
+.mao-stage #avatar{width:100%;height:100%;top:0}
+.mao-stage .orbit{display:none}
+.mao-stage{background:#f0eef9}

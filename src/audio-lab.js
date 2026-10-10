@@ -181,7 +181,7 @@ export class AudioLab {
     }
   }
   setCharacter(id) {
-    this.$("#model-character-note").textContent = ["milo", "orb", "follow", "follow-classic", "girl"].includes(id)
+    this.$("#model-character-note").textContent = ["milo", "orb", "follow", "follow-classic", "girl", "mao"].includes(id)
       ? "此角色支持连续嘴形。52 通道作为交换协议；当前角色仅映射其中部分面部动作。"
       : "此角色尚未映射连续面部参数，曲线可监视但不会驱动嘴形；请切换到 Milo 或 Sprout。";
   }

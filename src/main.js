@@ -15,6 +15,8 @@ import {
 } from "./core.js";
 import { AvatarRuntime } from "./framework/index.js";
 import { RiveAdapter } from "./adapters/rive.js";
+import { Live2DAdapter } from "./adapters/live2d.js";
+import { mao } from "./characters/mao.js";
 import { OrbAdapter } from "./adapters/orb.js";
 import { milo } from "./characters/milo.js";
 import { miloBasic } from "./characters/milo-basic.js";
@@ -121,6 +123,7 @@ $("#app").innerHTML =
   "intensity": 0.9
 }</textarea><button class="btn" id="send-event">发送事件</button><p class="helper">window.avatar.dispatch(event)<br>window.avatar.pushText(chunk, final)</p></details></div><div id="status" role="status">正在加载 Rive 状态机…</div></div><p class="side-note">表情层与嘴形层独立运行。<br>切换角色时，表情与嘴形继续运行。</p></aside></div><footer><span>MILO LAB &nbsp; / &nbsp; Built for a more expressive connection.</span><span>Layered expressions · State & viseme protocol · v0.4</span></footer></main>`;
 const runtime = new AvatarRuntime();
+$("#character").add(new Option("Mao · Live2D", "mao"));
 $("#character").add(new Option("Follow V2 · 12 个表情造型", "follow"));
 $("#character").add(new Option("Girl · 12 个表情造型", "girl"));
 $("#character").add(new Option("Follow Classic · 升级前对比", "follow-classic"));
@@ -143,6 +146,15 @@ $("#stage").insertAdjacentHTML("afterend", `
       · <a href="https://creativecommons.org/licenses/by/4.0/" target="_blank" rel="noopener noreferrer">CC BY 4.0</a>
       · <a href="/girl-expressive.rev" download>下载 Girl 编辑器工程</a></p>
   </section>`);
+$("#stage").insertAdjacentHTML("afterend", `
+  <section id="mao-info" class="panel hidden">
+    <strong>Niziiro Mao · Live2D</strong>
+    <p>原生眉眼、五种连续嘴形、转头与头发物理效果。七种情绪由 Milos 映射驱动。</p>
+    <p>嘴形映射到 A / I / U / E / O；此模型不提供独立上下唇控制点。</p>
+    <p class="helper"><a href="https://www.live2d.com/en/learn/sample/niziiro-mao/" target="_blank" rel="noopener noreferrer">Mao © Live2D Inc.</a>
+      · <a href="https://www.live2d.com/en/learn/sample/model-terms/" target="_blank" rel="noopener noreferrer">Live2D sample terms</a></p>
+    <p class="helper" data-i18n-ignore>This content uses sample data owned and copyrighted by Live2D Inc. The sample data are utilized in accordance with terms and conditions set by Live2D Inc. This content itself is created at the author’s sole discretion.</p>
+  </section>`);
 // Keep the expression studies immediately below the avatar, ahead of voice labs.
 $("#stage").insertAdjacentElement("afterend", $("#expression-studio"));
 const target = runtime.parameters;
@@ -159,6 +171,7 @@ let audioLab = null;
 let mouthLab = null;
 let voicePanel = null;
 const characters = new Map([
+  ["mao", { name: "Mao", create: () => new Live2DAdapter(mao) }],
   ["girl", { name: "Girl", create: () => new RiveAdapter(girl) }],
   ["follow-classic", { name: "Follow Classic", create: () => new RiveAdapter(followClassic) }],
   ["follow", { name: "Follow V2", create: () => new RiveAdapter(interactiveFollow) }],
@@ -318,8 +331,10 @@ async function setCharacter(id) {
     $("#stage").classList.toggle("follow-stage", isFollow);
     $("#follow-info").classList.toggle("hidden", !isFollow);
     $("#girl-info").classList.toggle("hidden", id !== "girl");
+    $("#mao-info").classList.toggle("hidden", id !== "mao");
+    $("#stage").classList.toggle("mao-stage", id === "mao");
     $("#stage").classList.toggle("girl-stage", id === "girl");
-    $("#follow").checked = isFollow || id === "girl";
+    $("#follow").checked = isFollow || id === "girl" || id === "mao";
     document.querySelectorAll("[data-emotion], #intensity, #headTilt, #auto-blink, #idle-motion, #blink, #nod, #shake")
       .forEach((control) => { control.disabled = false; });
     $("#emotion-badge").textContent = emotion;
@@ -328,7 +343,7 @@ async function setCharacter(id) {
       : isFollow
       ? "原生转头、眨眼与表情层同时运行；语音模型控制连续嘴形，JEV 控制情绪和动作。"
       : "表情层与嘴形层独立运行。切换角色时，表情与嘴形继续运行。";
-    $("#expression-studio").classList.toggle("hidden", !["milo", "follow", "follow-classic", "girl"].includes(id));
+    $("#expression-studio").classList.toggle("hidden", !["milo", "follow", "follow-classic", "girl", "mao"].includes(id));
     stopDemo();
     $("#character").value = id;
     $("#character-name").textContent = entry.name;

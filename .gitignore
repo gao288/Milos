@@ -16,3 +16,6 @@ __pycache__/
 rive-follow/build/
 
 rive-girl/build/
+
+# Download licensed Live2D sample/Core locally with npm run live2d:setup.
+public/live2d/

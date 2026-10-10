@@ -25,7 +25,7 @@ Milos connects streaming speech, emotion inference, and continuous facial animat
 - **Voice conversations:** GPT-Live, experimental ElevenLabs revoicing, and experimental Speech Engine with a separate streaming language model.
 - **Text-driven emotion:** JEV reads reply text and recent context to suggest emotion, intensity, head tilt, and gestures. Live output is inspectable in the UI.
 - **Natural motion:** breathing, blinking, gaze, idle head movement, and interruptible gestures.
-- **Interchangeable renderers:** Follow, Girl, and Milo Rive characters plus a Canvas example; expressions and speech share the same runtime contract.
+- **Interchangeable renderers:** Follow, Girl, and Milo Rive characters, an optional Live2D Mao character, and a Canvas example; expressions and speech share the same runtime contract.
 - **English / 中文 interface:** instant switching with a remembered preference. English and Mandarin speech samples are included.
 
 The project is a working development playground and reusable source framework. Voice integrations are experimental; it is not yet a published npm package or a production multi-user service.
@@ -42,6 +42,17 @@ through controller keyframes and lip-bone offsets. Choose Girl from the dropdown
 [View the native expression sheet](design/expression-studies/girl/v1-rendered.png)
 · [Compare the concept and current rig](design/expression-studies/girl/v1-comparison.png)
 · [Download the Rive Editor project](public/girl-expressive.rev)
+
+### Live2D VTuber character
+
+Try **Mao · Live2D**, the official Niziiro Mao sample by Live2D Inc. It brings
+native facial deformation and hair/clothing physics to the same voice and JEV
+pipeline. Seven emotions, gaze, blinking, head motion and continuous speech
+articulation are mapped to the original rig.
+
+Run `npm run live2d:setup`, then select Mao or open `?character=mao`.
+The licensed model and Cubism Core download separately; they are not part of the
+repository's ISC license. See [setup, channel mapping and limitations](docs/live2d.md).
 
 ## Quick start
 

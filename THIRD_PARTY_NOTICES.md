@@ -77,3 +77,27 @@ bundle; see https://github.com/espeak-ng/espeak-ng for the speech engine.
 - Mandarin: “你好，很高兴见到你。现在我的嘴形跟着声音变化。我们可以换一个角色，再听同一句话。”
 
 These fixtures validate the pipeline only; they are not a speech accuracy benchmark.
+
+## Niziiro Mao and Live2D Cubism
+
+- Character and runtime model: **Niziiro Mao © Live2D Inc.**
+- Original: https://www.live2d.com/en/learn/sample/niziiro-mao/
+- [Free Material License Agreement](https://www.live2d.com/eula/live2d-free-material-license-agreement_en.html)
+- [Live2D sample terms](https://www.live2d.com/en/learn/sample/model-terms/)
+- Cubism Core: © Live2D Inc., [Live2D Proprietary Software License](https://www.live2d.com/eula/live2d-proprietary-software-license-agreement_en.html).
+- Cubism Framework bundled in the renderer: [Live2D Open Software License](https://www.live2d.com/eula/live2d-open-software-license-agreement_en.html).
+- [SDK release licensing](https://www.live2d.com/en/sdk/license/) applies separately to publishing applications; eligibility depends on the publisher and use.
+- `pixi-live2d-display` © guansss and PixiJS © their contributors: MIT.
+
+This content uses sample data owned and copyrighted by Live2D Inc. The sample
+data are utilized in accordance with terms and conditions set by Live2D Inc.
+This content itself is created at the author's sole discretion.
+
+Milos maps its speech/emotion protocol onto the original model's parameters.
+The artwork is unmodified. The application displays a portrait crop and uses
+native physics; it does not play the sample's magical-effects motions.
+These assets are **not** ISC-licensed or a Milos-original character. The official
+model and Core are downloaded separately by `npm run live2d:setup`, are ignored
+by Git, and are copied into the application build for runtime use. Review the
+above terms before redistributing or publishing your own application.
+See [Live2D setup](docs/live2d.md) for pinned sources and integration details.

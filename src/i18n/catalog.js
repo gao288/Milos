@@ -1,6 +1,8 @@
 // Canonical UI copy: Chinese source -> English. Protocol identifiers, model
 // outputs, chat transcripts and user input are intentionally not translated.
 export const messages = [
+['原生眉眼、五种连续嘴形、转头与头发物理效果。七种情绪由 Milos 映射驱动。','Native eyes, brows, five continuous mouth shapes, head turns and hair physics. Seven emotions mapped by Milos.'],
+['嘴形映射到 A / I / U / E / O；此模型不提供独立上下唇控制点。','Speech maps to A / I / U / E / O. This rig has no independent upper/lower lip control points.'],
 ['让每一个表情，都有回应。','An expression for every moment.'],
 ['从一个微笑开始。探索表情、声音与动作之间的联系。','Start with a smile. Explore the connection between expression, voice and motion.'],
 ['参数化动画角色','Animated avatar'],['重置所有参数','Reset all controls'],
