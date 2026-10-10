@@ -73,9 +73,10 @@ test('Girl native rig clips white eyes when blinking and separates speech from e
     counts.push(await page.evaluate(async data=>{
       const img=new Image();img.src='data:image/png;base64,'+data;await img.decode();
       const c=document.createElement('canvas');c.width=c.height=600;const ctx=c.getContext('2d');ctx.drawImage(img,0,0);
-      // Original eye whites are lilac (#ebe1f6). Exclude the white nose highlight.
+      // Eye whites use the calibrated near-white (#fbf7ff from girl_palette).
+      // Exclude the white nose highlight.
       const pixels=ctx.getImageData(140,220,190,75).data;let white=0;
-      for(let i=0;i<pixels.length;i+=4)if(Math.abs(pixels[i]-235)<7&&Math.abs(pixels[i+1]-225)<7&&Math.abs(pixels[i+2]-246)<7)white++;
+      for(let i=0;i<pixels.length;i+=4)if(Math.abs(pixels[i]-251)<7&&Math.abs(pixels[i+1]-247)<7&&Math.abs(pixels[i+2]-255)<7)white++;
       return white;
     },capture));
   }

@@ -13,8 +13,8 @@ export function solveGirlFrame(frame) {
     nativeBlink: 1 - 1.56 * frame.motion.eyeOpen,
     gazeX: frame.motion.gazeX * 13,
     gazeY: frame.motion.gazeY * 8,
-    mouseX: 1100 + frame.motion.gazeX * 280,
-    mouseY: 540 + frame.motion.gazeY * 230,
+    mouseX: 1060 + frame.motion.gazeX * 280,
+    mouseY: 730 + frame.motion.gazeY * 200,
   };
 }
 export const girl = {
