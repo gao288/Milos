@@ -30,6 +30,10 @@ The Follow mouth solver maps 27 continuous channels to eight cubic lip vertices 
 
 ## Replacing a character or renderer
 
+For the Follow V2 monochrome preview and local task/voice event demonstrations,
+see [1-bit device preview](device-preview.md). It samples the existing renderer;
+it does not change the shared avatar or audio protocol.
+
 A renderer implements:
 
 ```js

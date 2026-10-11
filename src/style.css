@@ -31,3 +31,29 @@ button:disabled,input:disabled{cursor:not-allowed}
 .mao-stage #avatar{width:100%;height:100%;top:0}
 .mao-stage .orbit{display:none}
 .mao-stage{background:#f0eef9}
+
+.device-panel{margin-bottom:16px}
+.device-controls{margin-top:16px}
+.device-panel .panel-head{gap:12px;margin-bottom:8px}
+.device-panel .eyebrow{margin-bottom:5px}
+.device-settings{display:grid;grid-template-columns:1fr 1fr 1fr;gap:12px;margin:18px 0 12px}
+.device-settings label{display:flex;flex-direction:column;justify-content:center;gap:8px;font-size:11px;color:#64715e;min-width:0}
+.device-settings select{width:100%}
+.device-hook-heading{display:flex;justify-content:space-between;align-items:center;margin:18px 0 10px;font-size:12px}
+.device-hooks{display:grid;grid-template-columns:repeat(4,minmax(0,1fr));gap:8px;margin-bottom:12px}
+.device-hook{text-align:left;padding:11px 9px;min-width:0}
+.device-hook strong,.device-hook span{display:block}
+.device-hook span{font-size:10px;line-height:1.5;margin-top:5px;color:#6e7967}
+.device-hook.active{background:#edf3e7;border-color:#52684d}
+.device-event{display:flex;flex-wrap:wrap;justify-content:space-between;gap:8px;padding:12px 0;font-size:11px;color:#52684d}
+.device-event code{font-size:10px;overflow-wrap:anywhere}
+.stage.onebit-stage{background:white;border-color:#333}
+.onebit-stage:before,.onebit-stage .orbit,.onebit-stage .corner{display:none}
+.onebit-stage #avatar{width:min(100%,400px);height:400px;top:60px}
+.onebit-stage #avatar canvas:not(#onebit-canvas){opacity:0}
+#avatar #onebit-canvas{image-rendering:pixelated;pointer-events:none;background:#fff}
+.onebit-stage .stage-top .pill{background:#fff;color:#111;border-color:#111}
+.onebit-stage .dot{background:#111}
+.onebit-stage .subtitle{background:#fff;color:#000;border:1px solid #000}
+@media(max-width:1100px){.device-hooks{grid-template-columns:repeat(2,minmax(0,1fr))}.onebit-stage #avatar{height:330px;top:65px}}
+@media(max-width:420px){.device-settings{grid-template-columns:1fr 1fr}.device-settings label:last-child{grid-column:1/-1}.onebit-stage #avatar{height:310px}.device-panel .panel-head{align-items:flex-start}}

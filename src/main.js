@@ -28,6 +28,7 @@ import { MouthLab } from "./mouth-lab.js";
 import { AudioLab } from "./audio-lab.js";
 import { PerformanceTimeline } from "./framework/performance.js";
 import { VoicePanel } from "./voice-panel.js";
+import { DevicePanel } from './device-panel.js';
 const $ = (s) => document.querySelector(s);
 const icons = ["◡", "☺", "◠", "◔", "◎", "≋", "◉"];
 const labels = [
@@ -170,6 +171,7 @@ let demoTimer = null;
 let audioLab = null;
 let mouthLab = null;
 let voicePanel = null;
+let devicePanel = null;
 const characters = new Map([
   ["mao", { name: "Mao", create: () => new Live2DAdapter(mao) }],
   ["girl", { name: "Girl", create: () => new RiveAdapter(girl) }],
@@ -212,6 +214,7 @@ function setSource(v) {
   $("#source").textContent = v.toUpperCase();
 }
 function setEmotion(e, intensity = target.intensity) {
+  devicePanel?.cancel();
   document
     .querySelectorAll("[data-preset]")
     .forEach((el) => el.classList.remove("active"));
@@ -247,6 +250,7 @@ function stopAudio() {
   $("#mic").disabled = false;
 }
 function stop(options = {}) {
+  devicePanel?.cancel();
   if (!options.keepVoice) voicePanel?.stop();
   if (!options.keepModel) audioLab?.stop();
   stopDemo();
@@ -347,6 +351,7 @@ async function setCharacter(id) {
     stopDemo();
     $("#character").value = id;
     $("#character-name").textContent = entry.name;
+    devicePanel?.characterChanged(id);
     $("#loading").classList.add("hidden");
     status(entry.name + (isFollow ? " 已连接 · 原生表情 / 连续嘴形 / 视线跟随" : " 已连接 · 统一状态/嘴形接口"));
     return true;
@@ -449,6 +454,11 @@ voicePanel = new VoicePanel({
     voicePerformance = null;
   },
 });
+devicePanel = new DevicePanel({ runtime, api: window.avatar, stop, preset: applyPreset, mouth: chooseViseme });
+window.avatar.device = {
+  setEnabled: enabled => devicePanel.setEnabled(Boolean(enabled)),
+  trigger: name => devicePanel.trigger(name),
+};
 $("#character").onchange = (e) => {
   setCharacter(e.target.value).catch(() => {});
 };
@@ -487,6 +497,7 @@ function stopDemo() {
 function applyPreset(id) {
   const preset = ["follow", "girl"].includes(character) ? (followPresets[id] ?? presets[id]) : (presets[id] ?? followPresets[id]);
   if (!preset) throw Error("未知 preset");
+  devicePanel?.cancel();
   setFace({
     ...Object.fromEntries(facialControls.map(([k]) => [k, 0])),
     ...preset.face,
@@ -678,6 +689,7 @@ $("#mic").onclick = async () => {
 };
 let audioTick = 0;
 function frame(now) {
+  devicePanel?.update(now);
   if (analyser && now - audioTick > 55) {
     audioTick = now;
     analyser.getFloatTimeDomainData(timeData);
@@ -722,6 +734,7 @@ function frame(now) {
   runtime.options.autoBlink = $("#auto-blink").checked;
   runtime.options.idleMotion = $("#idle-motion").checked;
   const renderedFrame = runtime.update(now);
+  devicePanel?.render(now);
   audioLab.update(renderedFrame);
   mouthLab.update();
   $("#viseme-readout").textContent = renderedFrame.performance ? "CONTINUOUS" : viseme;
@@ -751,6 +764,7 @@ window.addEventListener("pagehide", () => {
   localization.disconnect();
   cancelAnimationFrame(frameId);
   stop();
+  devicePanel?.dispose();
   runtime.dispose();
   audioLab.dispose();
 });

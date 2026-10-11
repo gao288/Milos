@@ -1,6 +1,15 @@
 // Canonical UI copy: Chinese source -> English. Protocol identifiers, model
 // outputs, chat transcripts and user input are intentionally not translated.
 export const messages = [
+['1-bit 墨水屏预览','1-bit e-paper preview'],['开启 1-bit','Enable 1-bit'],['恢复原始预览','Original preview'],
+['动作完成，保留当前表情。','Motion finished; holding the expression.'],
+['Follow V2 · 同一套 12 个表情，换一种屏幕。','Follow V2 · Twelve expressions. A different kind of screen.'],
+['像素尺寸','Pixel resolution'],['预览刷新率','Preview refresh rate'],['黑白阈值','Black / white threshold'],
+['浏览器模拟：仅黑白像素与刷新频率，不模拟真实墨水屏的残影、全刷或耗电。','Browser simulation of monochrome pixels and refresh rate only; no hardware ghosting, full refresh or power simulation.'],
+['Hook 动画演示','Hook animation demos'],['演示会停止当前播放；下方 12 个表情也可以直接切换。','Demos stop current playback. You can also use the twelve expression buttons below.'],
+['选择一个事件，看看角色的反应。','Choose an event to see the response.'],['停止动作','Stop motion'],['预览无法加载，请重试。','Preview could not load. Please try again.'],
+['待机','Idle'],['开始任务','Start task'],['等待输入','Await input'],['任务完成','Task completed'],['任务失败','Task failed'],['需要注意','Needs attention'],['开始聆听','Start listening'],['模拟说话','Simulate speech'],
+['放松、轻轻转头','Relax and glance aside'],['好奇、抬眼思考','Look up, curious and thinking'],['关切、侧头等待','Tilt the head and wait'],['开心、点头回应','Smile and nod'],['难过、轻轻摇头','Look sad and shake the head'],['惊恐、转头提醒','Look alarmed and turn'],['微笑、专注倾听','Smile and listen closely'],['微笑、嘴形演示（无音频）','Smile and move the mouth (silent)'],
 ['选择音色','Choose a voice'],['音色选择','Voice selection'],['默认音色','Default voice'],
 ['北美男声','Male · North American'],['英式男声','Male · British'],['北美女声','Female · North American'],['爱尔兰女声','Female · Irish'],
 ['亲切男声','Male · Friendly'],['低沉男声','Male · Deep'],['沉稳女声','Female · Reassuring'],['明亮女声','Female · Bright'],
