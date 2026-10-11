@@ -67,3 +67,35 @@ test('Mao download failure retains the working renderer and can be retried',asyn
  await expect.poll(()=>page.evaluate(()=>window.avatar.getState().character)).toBe('mao');
  await expect(page.locator('#avatar canvas')).toHaveCount(1);
 });
+
+test('Mao renders an open mouth for ordinary low-jaw model speech, then closes in silence',async({page})=>{
+ const {readFile}=await import('node:fs/promises');
+ const clip=JSON.parse(await readFile('tests/fixtures/mao-speech.json','utf8'));
+ await load(page);
+ await page.evaluate(async()=>{
+  const {Live2DAdapter}=await import('/src/adapters/live2d.js');const {mao}=await import('/src/characters/mao.js');
+  const host=document.createElement('div');host.id='mao-mouth-probe';
+  host.style.cssText='position:fixed;inset:0;width:600px;height:600px;background:white;z-index:999';document.body.append(host);
+  window.maoProbe=new Live2DAdapter(mao);await window.maoProbe.mount(host);
+ });
+ const sample=async weights=>{
+  await page.evaluate(async b=>{
+   const f={expression:{state:'neutral',intensity:1},face:{},motion:{eyeOpen:1,gazeX:0,gazeY:0,headTilt:0,breath:0},mouth:{weights:{REST:1}},performance:{weight:1,weights:b}};
+   for(let i=0;i<25;i++){window.maoProbe.render(f);await new Promise(r=>setTimeout(r,16));}
+  },weights);
+  const image=(await page.locator('#mao-mouth-probe').screenshot()).toString('base64');
+  return page.evaluate(async data=>{
+   const img=new Image();img.src='data:image/png;base64,'+data;await img.decode();
+   const c=document.createElement('canvas');c.width=c.height=600;const ctx=c.getContext('2d');ctx.drawImage(img,0,0,600,600);
+   // Mouth-only region: count the pink/dark interior, excluding skin and nose.
+   const pixels=ctx.getImageData(278,300,44,28).data;let count=0;
+   for(let i=0;i<pixels.length;i+=4)if(pixels[i]>70&&pixels[i+1]<180&&pixels[i+2]<185&&pixels[i]>pixels[i+1]*1.3)count++;
+   return count;
+  },image);
+ };
+ const rest=await sample({});
+ for(const frame of clip.frames)expect(await sample(frame.weights),frame.language+' mouth interior').toBeGreaterThan(rest*2+50);
+ expect(await sample({jawOpen:.04,mouthUpperUpLeft:.15,mouthUpperUpRight:.15,mouthLowerDownLeft:.25,mouthLowerDownRight:.25})).toBeGreaterThan(rest*2+50);
+ const silence=await sample({});expect(Math.abs(silence-rest)).toBeLessThanOrEqual(3);
+ await page.evaluate(()=>{window.maoProbe.dispose();document.querySelector('#mao-mouth-probe').remove();});
+});

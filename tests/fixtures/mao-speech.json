@@ -1,0 +1,71 @@
+{
+  "source": "UniTalker ONNX v0.4.0, neutral conditioning, public/samples/en.wav and zh.wav resampled to mono PCM16 16 kHz. Representative low-jaw speech frames, not synthetic maximum controls.",
+  "frames": [
+    {
+      "language": "en",
+      "timeMs": 4166.6667,
+      "weights": {
+        "jawOpen": 0.10018,
+        "mouthClose": 0.06823,
+        "jawLeft": 0.0134,
+        "jawRight": 0.0166,
+        "jawForward": 0.08164,
+        "mouthUpperUpLeft": 0.03752,
+        "mouthUpperUpRight": 0.04019,
+        "mouthLowerDownLeft": 0.1459,
+        "mouthLowerDownRight": 0.14629,
+        "mouthRollUpper": 0.12367,
+        "mouthRollLower": 0.09059,
+        "mouthSmileLeft": 0.09231,
+        "mouthSmileRight": 0.10062,
+        "mouthDimpleLeft": 0.0716,
+        "mouthDimpleRight": 0.06985,
+        "mouthStretchLeft": 0.16105,
+        "mouthStretchRight": 0.15918,
+        "mouthFrownLeft": 0.04376,
+        "mouthFrownRight": 0.0418,
+        "mouthPressLeft": 0.03405,
+        "mouthPressRight": 0.03666,
+        "mouthPucker": 0.08506,
+        "mouthFunnel": 0.14747,
+        "mouthLeft": 0.0226,
+        "mouthRight": 0.00778,
+        "mouthShrugLower": 0.07386,
+        "mouthShrugUpper": 0.07124
+      }
+    },
+    {
+      "language": "zh",
+      "timeMs": 8533.3333,
+      "weights": {
+        "jawOpen": 0.15864,
+        "mouthClose": 0.05836,
+        "jawLeft": 0.04175,
+        "jawRight": 0.00188,
+        "jawForward": 0.05777,
+        "mouthUpperUpLeft": 0.13397,
+        "mouthUpperUpRight": 0.14465,
+        "mouthLowerDownLeft": 0.2191,
+        "mouthLowerDownRight": 0.22324,
+        "mouthRollUpper": 0.02963,
+        "mouthRollLower": 0.03521,
+        "mouthSmileLeft": 0.04371,
+        "mouthSmileRight": 0.05689,
+        "mouthDimpleLeft": 0.03674,
+        "mouthDimpleRight": 0.03968,
+        "mouthStretchLeft": 0.13591,
+        "mouthStretchRight": 0.15229,
+        "mouthFrownLeft": 0.00761,
+        "mouthFrownRight": 0.00814,
+        "mouthPressLeft": 0.04899,
+        "mouthPressRight": 0.04803,
+        "mouthPucker": 0.0962,
+        "mouthFunnel": 0.19478,
+        "mouthLeft": 0.018,
+        "mouthRight": 0.00304,
+        "mouthShrugLower": 0.08587,
+        "mouthShrugUpper": 0.07516
+      }
+    }
+  ]
+}

@@ -35,7 +35,7 @@ Live2D's licenses and are not covered by the repository's ISC license.
 | Gaze, head tilt, nod/shake | Head/body angles and eye direction |
 | Blinks + facial adjustments | Left/right eye openness and brow height |
 | Viseme weights | A / I / U / E / O blend shapes |
-| Continuous speech performance | Jaw opening, closure, rounding and stretching reduced to five mouth shapes |
+| Continuous speech performance | Jaw and upper/lower lip separation, closure, rounding and stretching reduced to five mouth shapes |
 | Breathing / natural motion | Breathing and pose parameters, with native hair/clothing physics |
 
 Speech parameters update before native physics. Milos owns the animation clock;
@@ -44,6 +44,14 @@ competing controllers. Expressions ease between states; speech and blinks use
 faster smoothing. A silent performance frame closes articulation even during a
 strong emotion. Without speech, laughter and surprise can hold a steady open-mouth
 pose. Stopping speech removes its influence rather than leaving stale values.
+
+The speech mapping calibrates the combined jaw/lip gap with a bounded response
+curve: ordinary UniTalker speech has much smaller jaw values than a manual
+full-open pose. Closure and lip pressing are applied after this calibration;
+the playback weight still gates the result. Rounded vowel selection is separated
+from opening amplitude so small jaw values do not vanish when mapped to O.
+Low-jaw English and Mandarin frames from the bundled audio samples are included
+as regression fixtures, with a browser check of the rendered mouth interior.
 
 This is a rig-specific mapping, not a one-to-one 52-channel facial rig. Mao has
 five continuous mouth shapes and mouth-expression controls, but no separately

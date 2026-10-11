@@ -1,5 +1,30 @@
 const clamp = (v, min = 0, max = 1) => Math.max(min, Math.min(max, v));
 
+// Mao's vowel shapes need a visible aperture, not the raw ARKit jaw value.
+// Speech often opens the lips with little jaw movement. Calibrate the combined
+// gap before choosing a shape; keep closure and the playback gate authoritative.
+export function solveMaoSpeech(weights = {}) {
+  const b = name => clamp(Number.isFinite(weights[name]) ? weights[name] : 0);
+  const average = name => (b(name + 'Left') + b(name + 'Right')) / 2;
+  const gap = clamp(b('jawOpen') + average('mouthUpperUp') * .45
+    + average('mouthLowerDown') * .65 + b('mouthFunnel') * .12
+    - (b('mouthRollUpper') + b('mouthRollLower')) * .1);
+  const aperture = Math.max(0, (gap - .012) / .988);
+  const open = (1 - Math.exp(-2.8 * aperture)) / (1 - Math.exp(-2.8))
+    * (1 - b('mouthClose')) * (1 - average('mouthPress'));
+  const round = clamp(Math.max(b('mouthPucker'), b('mouthFunnel')) * 1.3);
+  const wide = clamp(average('mouthStretch') * 1.3);
+  // Separate aperture from vowel choice: do not square a small jaw value to
+  // produce O, or let rounded/extended lips erase the visible opening.
+  return {
+    A: open * (1 - round) * (1 - wide),
+    I: open * (1 - round) * wide * .25,
+    E: open * (1 - round) * wide * .75,
+    U: open * round * .35 * (1 - open),
+    O: open * round * (.65 + .35 * open),
+  };
+}
+
 // Calibrated against Mao's native parameter IDs and exp_02 / 05 / 07 / 08.
 // This adapter reduces the shared facial protocol to the controls this rig has.
 export function solveMaoFrame(frame) {
@@ -13,12 +38,7 @@ export function solveMaoFrame(frame) {
   const v = frame.mouth.weights;
   const vowels = { A: v.A ?? 0, I: v.I ?? 0, U: (v.U ?? 0) + (v.V ?? 0), E: v.E ?? 0, O: v.O ?? 0 };
   // Continuous articulation does not need speech-to-vowel classification.
-  const jaw = clamp((b.jawOpen ?? 0) * (1 - (b.mouthClose ?? 0)));
-  const round = clamp(Math.max(b.mouthPucker ?? 0, b.mouthFunnel ?? 0));
-  const stretch = clamp(((b.mouthStretchLeft ?? 0) + (b.mouthStretchRight ?? 0)) / 2);
-  const speech = { A: jaw * (1 - round) * (1 - stretch * .5),
-    I: jaw * stretch * .45, E: jaw * stretch * .55,
-    U: round * jaw * (1 - jaw), O: round * jaw * jaw };
+  const speech = solveMaoSpeech(b);
   for (const name of Object.keys(vowels)) vowels[name] = vowels[name] * (1 - mix) + speech[name] * mix;
   // Silent expressive poses can hold a steady open mouth; speech takes over
   // articulation completely, including silent frames within an audio stream.

@@ -28,3 +28,30 @@ test('Mao supports manual vowels, jaw and asymmetric facial controls',()=>{
  const r=solveMaoFrame(f);assert.ok(mouth(r).reduce((a,b)=>a+b,0)<=1);
  assert.ok(r.ParamBrowLY>r.ParamBrowRY);assert.ok(r.ParamEyeROpen<r.ParamEyeLOpen);
 });
+
+test('Mao gives ordinary model speech a visible aperture, including lip-led speech',async()=>{
+ const {readFile}=await import('node:fs/promises');
+ const clip=JSON.parse(await readFile(new URL('./fixtures/mao-speech.json',import.meta.url)));
+ for(const sample of clip.frames){
+  const f=frame();f.performance={weight:1,weights:sample.weights};
+  const result=mouth(solveMaoFrame(f));
+  assert.ok(result.reduce((a,b)=>a+b,0)>.35, sample.language+' ordinary speech must open visibly');
+  assert.ok(result.reduce((a,b)=>a+b,0)<=1);
+ }
+ const f=frame();f.performance={weight:1,weights:{jawOpen:.04,mouthUpperUpLeft:.15,mouthUpperUpRight:.15,mouthLowerDownLeft:.25,mouthLowerDownRight:.25}};
+ assert.ok(solveMaoFrame(f).ParamA>.5,'lip separation must contribute even with little jaw movement');
+ f.performance.weights.mouthClose=1;
+ assert.deepEqual(mouth(solveMaoFrame(f)),[0,0,0,0,0]);
+});
+
+test('Mao articulation respects closure, playback fades and near-zero noise',()=>{
+ const f=frame();f.performance={weight:1,weights:{jawOpen:.008}};
+ assert.deepEqual(mouth(solveMaoFrame(f)),[0,0,0,0,0]);
+ f.performance.weights={jawOpen:.2,mouthFunnel:.6};
+ const full=mouth(solveMaoFrame(f));assert.ok(full[4]>.3);
+ f.performance.weight=.25;
+ mouth(solveMaoFrame(f)).forEach((v,i)=>assert.ok(Math.abs(v-full[i]*.25)<1e-9));
+ f.performance.weight=0;assert.deepEqual(mouth(solveMaoFrame(f)),[0,0,0,0,0]);
+ f.performance.weight=1;f.performance.weights.mouthPressLeft=f.performance.weights.mouthPressRight=1;
+ assert.deepEqual(mouth(solveMaoFrame(f)),[0,0,0,0,0]);
+});
