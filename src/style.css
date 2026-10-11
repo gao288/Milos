@@ -49,11 +49,11 @@ button:disabled,input:disabled{cursor:not-allowed}
 .device-event code{font-size:10px;overflow-wrap:anywhere}
 .stage.onebit-stage{background:white;border-color:#333}
 .onebit-stage:before,.onebit-stage .orbit,.onebit-stage .corner{display:none}
-.onebit-stage #avatar{width:min(100%,400px);height:400px;top:60px}
+.onebit-stage #avatar{width:min(100%,400px);height:auto;aspect-ratio:1;top:60px}
 .onebit-stage #avatar canvas:not(#onebit-canvas){opacity:0}
 #avatar #onebit-canvas{image-rendering:pixelated;pointer-events:none;background:#fff}
 .onebit-stage .stage-top .pill{background:#fff;color:#111;border-color:#111}
 .onebit-stage .dot{background:#111}
 .onebit-stage .subtitle{background:#fff;color:#000;border:1px solid #000}
-@media(max-width:1100px){.device-hooks{grid-template-columns:repeat(2,minmax(0,1fr))}.onebit-stage #avatar{height:330px;top:65px}}
-@media(max-width:420px){.device-settings{grid-template-columns:1fr 1fr}.device-settings label:last-child{grid-column:1/-1}.onebit-stage #avatar{height:310px}.device-panel .panel-head{align-items:flex-start}}
+@media(max-width:1100px){.device-hooks{grid-template-columns:repeat(2,minmax(0,1fr))}.onebit-stage #avatar{width:min(100%,330px);top:65px}}
+@media(max-width:420px){.device-settings{grid-template-columns:1fr 1fr}.device-settings label:last-child{grid-column:1/-1}.onebit-stage #avatar{width:min(100%,310px)}.device-panel .panel-head{align-items:flex-start}}

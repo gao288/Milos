@@ -53,6 +53,25 @@ test('Follow is rendered as real binary pixels and responds to presets, resoluti
   expect(errors).toEqual([]);
 });
 
+test('square pixels retain their proportions across viewport and resolution changes', async ({ page }) => {
+  await setup(page);
+  for (const width of [1440, 1100, 900, 720, 390, 360]) {
+    await page.setViewportSize({ width, height: 900 });
+    for (const resolution of ['200', '480']) {
+      await page.selectOption('#onebit-resolution', resolution);
+      const dimensions = await page.locator('#onebit-canvas').evaluate(c => {
+        const box = c.getBoundingClientRect();
+        const stage = document.querySelector('#stage').getBoundingClientRect();
+        return { ratio: box.width / box.height, pixels: c.width / c.height,
+          inside: box.left >= stage.left && box.right <= stage.right && box.bottom <= stage.bottom };
+      });
+      expect(dimensions.ratio, `viewport ${width}, resolution ${resolution}`).toBeCloseTo(1, 3);
+      expect(dimensions.pixels).toBe(1);
+      expect(dimensions.inside).toBe(true);
+    }
+  }
+});
+
 test('hook demos are interruptible, translated, and release mouth control before switching renderers', async ({ page }) => {
   await setup(page);
   await page.locator('[data-device-hook="voice.speaking"]').click();
