@@ -1,6 +1,11 @@
 // Canonical UI copy: Chinese source -> English. Protocol identifiers, model
 // outputs, chat transcripts and user input are intentionally not translated.
 export const messages = [
+['选择音色','Choose a voice'],['音色选择','Voice selection'],['默认音色','Default voice'],
+['北美男声','Male · North American'],['英式男声','Male · British'],['北美女声','Female · North American'],['爱尔兰女声','Female · Irish'],
+['亲切男声','Male · Friendly'],['低沉男声','Male · Deep'],['沉稳女声','Female · Reassuring'],['明亮女声','Female · Bright'],
+['开始聊天前选择音色；更换声音需要结束当前聊天。','Choose a voice before starting. End the current chat to change voices.'],
+['可选音色尚未配置。','Voice choices are not configured yet.'],['GPT-Live 原生语音。','Native GPT-Live speech.'],
 ['原生眉眼、五种连续嘴形、转头与头发物理效果。七种情绪由 Milos 映射驱动。','Native eyes, brows, five continuous mouth shapes, head turns and hair physics. Seven emotions mapped by Milos.'],
 ['嘴形映射到 A / I / U / E / O；此模型不提供独立上下唇控制点。','Speech maps to A / I / U / E / O. This rig has no independent upper/lower lip control points.'],
 ['让每一个表情，都有回应。','An expression for every moment.'],

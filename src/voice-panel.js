@@ -1,3 +1,4 @@
+import { LIVE_VOICES } from "./voice/voices.js";
 import { VoiceController } from "./voice/controller.js";
 import { DEFAULT_CONTRACT } from "./framework/contract.js";
 
@@ -16,7 +17,12 @@ export class VoicePanel {
           <button class="btn" id="voice-output-eleven" aria-pressed="false">ElevenLabs · 实验</button>
           <button class="btn" id="voice-output-engine" aria-pressed="false">Speech Engine · 实验</button>
         </div>
-        <p class="helper" id="voice-output-note">当前使用 GPT-Live 男声。结束聊天后可切换配音方式。</p>
+        <p class="helper" id="voice-output-note">GPT-Live 原生语音。</p>
+        <div id="voice-choice-panel">
+          <strong class="helper">选择音色</strong>
+          <div id="voice-choices" class="voice-output-switch" role="group" aria-label="音色选择"></div>
+          <p class="helper" id="voice-choice-note">开始聊天前选择音色；更换声音需要结束当前聊天。</p>
+        </div>
         <div class="actions">
           <button class="btn primary" id="voice-start">开始语音聊天</button>
           <button class="btn" id="voice-stop" disabled>结束聊天</button>
@@ -61,10 +67,15 @@ export class VoicePanel {
     const times = { user: -Infinity, assistant: -Infinity };
     this.metrics = {};
     this.output = "live";
+    this.selectedVoices = {};
+    try { const saved = JSON.parse(localStorage.getItem('realpet.voices') || '{}');
+      for (const mode of ['live', 'engine']) if (typeof saved?.[mode] === 'string') this.selectedVoices[mode] = saved[mode];
+    } catch {}
     this.buffers = { live: 800, eleven: 800, engine: 300 };
     this.controller = new VoiceController({ avatar,
       onStatus: (text, error = false) => { this.$("voice-status").textContent = text; this.$("voice-status").classList.toggle("error", error); },
       onActive: active => {
+        this.active = active; this.renderVoices();
         this.$("voice-start").disabled = active; this.$("voice-stop").disabled = !active;
         this.$("voice-interrupt").disabled = !active; this.$("voice-buffer").disabled = active;
         this.$("voice-output-live").disabled = active; this.$("voice-output-eleven").disabled = active;
@@ -108,7 +119,7 @@ export class VoicePanel {
       this.$("voice-buffer").value = this.buffers[mode];
       this.$("voice-buffer-value").textContent = this.buffers[mode] + " ms";
       for (const name of ["live", "eleven", "engine"]) this.$(`voice-output-${name}`).setAttribute("aria-pressed", String(name === mode));
-      this.updateOutputNote();
+      this.renderVoices();
     };
     this.$("voice-start").onclick = () => {
       for (const id of ["jev-json", "jev-input", "jev-fragment"]) delete this.$(id).dataset.i18nIgnore;
@@ -120,32 +131,61 @@ export class VoicePanel {
       this.$("jev-json").textContent = "尚未收到结果";
       this.$("jev-fragment").textContent = "等待回复文本…";
       document.querySelectorAll("[data-jev-emotion]").forEach(el => el.classList.remove("active"));
-      return this.controller.start({ bufferMs: Number(this.$("voice-buffer").value), output: this.output });
+      return this.controller.start({ bufferMs: Number(this.$("voice-buffer").value), output: this.output, voice: this.output === "eleven" ? undefined : this.selectedVoices[this.output] });
     };
     this.$("voice-stop").onclick = () => { this.stop(); this.$("voice-status").textContent = "聊天已结束"; };
     this.$("voice-interrupt").onclick = () => this.controller.interrupt();
+    this.renderVoices();
     this.refresh();
     window.addEventListener("pagehide", () => this.stop());
   }
   async refresh() {
     try {
       const config = await this.controller.health();
-      this.config = config; this.updateOutputNote();
+      this.config = config; this.renderVoices();
       this.$("voice-config").textContent = `${config.liveModel} · ${config.jevModel} · 本地 Codex P1`;
       this.$("voice-status").textContent = config.openaiConfigured
         ? (config.jevConfigured ? "准备就绪，点击开始聊天" : "语音已配置；JEV key 尚未配置")
         : "等待 GPT-Live API key · JEV " + (config.jevConfigured ? "已配置" : "未配置");
     } catch { this.$("voice-status").textContent = "语音服务未启动 · 运行 npm run voice:serve"; }
   }
+  renderVoices() {
+    const choices = this.output === 'live' ? (this.config?.liveVoices ?? LIVE_VOICES)
+      : this.output === 'engine' ? (this.config?.engineVoices ?? []) : [];
+    this.$('voice-choice-panel').classList.toggle('hidden', this.output === 'eleven');
+    const defaultId = this.output === 'live' ? this.config?.liveVoice : this.config?.engineVoice;
+    const selectedId = choices.find(v => v.id === this.selectedVoices[this.output])?.id
+      ?? choices.find(v => v.id === defaultId)?.id ?? choices[0]?.id;
+    // Do not overwrite a saved choice or server default with an early fallback
+    // while the health request is still in flight.
+    if (this.config) this.selectedVoices[this.output] = selectedId;
+    this.$('voice-choices').replaceChildren();
+    for (const voice of choices) {
+      const button = document.createElement('button'); button.type = 'button'; button.className = 'btn';
+      button.dataset.voice = voice.id; button.textContent = `${voice.name} · ${voice.description}`;
+      button.setAttribute('aria-pressed', String(voice.id === selectedId));
+      button.disabled = !!this.active;
+      button.onclick = () => {
+        if (this.active) return;
+        this.selectedVoices[this.output] = voice.id;
+        try { localStorage.setItem('realpet.voices', JSON.stringify(this.selectedVoices)); } catch {}
+        this.renderVoices();
+      };
+      this.$('voice-choices').append(button);
+    }
+    this.$('voice-choice-note').textContent = choices.length
+      ? '开始聊天前选择音色；更换声音需要结束当前聊天。' : '可选音色尚未配置。';
+    this.updateOutputNote();
+  }
   updateOutputNote() {
     if (this.output === "engine") {
       this.$("voice-output-note").textContent = "Speech Engine 负责听、说和语音打断；独立文本 LLM 流式回复，JEV 与嘴形跟随音频。" +
-        (this.config?.speechEngineConfigured ? ` 当前 LLM：${this.config.speechEngineModel}，Chris 男声。` : " 回调服务尚未配置。") +
+        (this.config?.speechEngineConfigured ? ` 当前 LLM：${this.config.speechEngineModel}。` : " 回调服务尚未配置。") +
         "「打断播放」静音本轮回复；再次开口继续聊天。";
       return;
     }
     this.$("voice-output-note").textContent = this.output === "live"
-      ? "当前使用 GPT-Live 男声。结束聊天后可切换配音方式。"
+      ? "GPT-Live 原生语音。"
       : "实验配音：GPT-Live 仍负责听懂与回复，ElevenLabs 按短句重新配音；会增加等待时间，两项服务均会计费。" +
         (this.config?.elevenConfigured ? ` 当前模型：${this.config.elevenModel}。` : " 尚未配置 ElevenLabs：需要在本地 .env 填入 ELEVENLABS_API_KEY 和 ELEVENLABS_VOICE_ID，然后重启语音服务。");
   }

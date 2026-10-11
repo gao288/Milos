@@ -5,6 +5,7 @@ import WebSocket, { WebSocketServer } from "ws";
 import { inferEmotion, JEV_MODEL } from "./jev.mjs";
 import { synthesizeEleven, ELEVEN_MODEL } from "./eleven.mjs";
 import { createEngineService, ENGINE_LLM } from "./speech-engine.mjs";
+import { liveVoices } from './voices.mjs';
 
 export function liveConfig(env = process.env) {
   return { model: env.GPT_LIVE_MODEL || "gpt-live-1", audio: {
@@ -26,13 +27,16 @@ export function createVoiceServer({ env = process.env, connect = (url, options) 
         liveModel: liveConfig(env).model, jevModel: env.JEV_MODEL || JEV_MODEL,
         elevenConfigured: !!(env.ELEVENLABS_API_KEY && env.ELEVENLABS_VOICE_ID), elevenModel: env.ELEVENLABS_MODEL || ELEVEN_MODEL,
         speechEngineConfigured: !!engine?.ready, speechEngineModel: env.SPEECH_ENGINE_LLM_MODEL || ENGINE_LLM,
+        liveVoices: liveVoices(env), liveVoice: liveConfig(env).audio.output.voice,
+        engineVoices: engine?.voices ?? [], engineVoice: engine?.defaultVoice,
         token, delegation: "pending-p1" });
     }
     if (req.headers["x-realpet-token"] !== token) return json(res, 403, { error: "Invalid local session token" });
     if (req.method === "POST" && url.pathname === "/api/voice/speech-engine") {
       if (!engine?.ready) return json(res, 503, { error: "Speech Engine 尚未配置回调服务" });
-      try { return json(res, 200, await engine.signedUrl()); }
-      catch { return json(res, 502, { error: "Speech Engine 会话创建失败，请检查 ElevenLabs 权限和回调服务" }); }
+      try { return json(res, 200, await engine.signedUrl(url.searchParams.get('voice') || undefined)); }
+      catch (error) { return json(res, error.message.startsWith('Invalid') ? 400 : 502,
+        { error: error.message.startsWith('Invalid') ? 'Invalid voice selection' : "Speech Engine 会话创建失败，请检查 ElevenLabs 权限和回调服务" }); }
     }
     if (req.method !== "POST" || !["/api/voice/emotion", "/api/voice/eleven"].includes(url.pathname)) return json(res, 404, { error: "Not found" });
     if (busy.has(url.pathname)) return json(res, 429, { error: "Request already running" });
@@ -61,9 +65,11 @@ export function createVoiceServer({ env = process.env, connect = (url, options) 
   server.on("upgrade", (req, socket, head) => {
     const url = new URL(req.url, "http://localhost");
     if (url.pathname !== "/api/voice/live" || url.searchParams.get("token") !== token) { socket.end("HTTP/1.1 403 Forbidden\r\nConnection: close\r\n\r\n"); return; }
-    sockets.handleUpgrade(req, socket, head, ws => sockets.emit("connection", ws));
+    const voice = url.searchParams.get('voice') || liveConfig(env).audio.output.voice;
+    if (!liveVoices(env).some(v => v.id === voice)) { socket.end("HTTP/1.1 400 Bad Request\r\nConnection: close\r\n\r\n"); return; }
+    sockets.handleUpgrade(req, socket, head, ws => sockets.emit("connection", ws, voice));
   });
-  sockets.on("connection", client => {
+  sockets.on("connection", (client, voice) => {
     const send = event => { if (client.readyState === WebSocket.OPEN) client.send(JSON.stringify(event)); };
     if (!env.OPENAI_API_KEY) { send({ type: "bridge.error", message: "OPENAI_API_KEY 尚未配置" }); client.close(); return; }
     if (clients.size) { send({ type: "bridge.error", message: "已有语音会话，请先结束" }); client.close(); return; }
@@ -80,7 +86,7 @@ export function createVoiceServer({ env = process.env, connect = (url, options) 
     };
     try { upstream = connect("wss://api.openai.com/v1/live/sessions", { headers: { Authorization: `Bearer ${env.OPENAI_API_KEY}` }, maxPayload: 4 * 1024 * 1024 }); }
     catch { send({ type: "bridge.error", message: "无法连接 GPT-Live" }); clearTimeout(startupTimer); clients.delete(client); client.close(); return; }
-    upstream.on("open", () => { upstream.send(JSON.stringify({ type: "session.start", session: liveConfig(env) })); });
+    upstream.on("open", () => { upstream.send(JSON.stringify({ type: "session.start", session: liveConfig({ ...env, GPT_LIVE_VOICE: voice }) })); });
     upstream.on("message", data => {
       let event; try { event = JSON.parse(data.toString()); } catch { return; }
       if (event.type === "session.started") { clearTimeout(startupTimer); started = true; }
@@ -91,7 +97,10 @@ export function createVoiceServer({ env = process.env, connect = (url, options) 
       }
       if (client.bufferedAmount > 2 * 1024 * 1024) { closeUpstream(); return; }
       send(event);
-      if (event.type === "session.closed") { finalized = true; clearTimeout(closeTimer); upstream.close(); client.close(); }
+      if (event.type === "session.closed") {
+        finalized = true; clients.delete(client); clearTimeout(closeTimer);
+        upstream.close(); client.close();
+      }
     });
     upstream.on("error", () => { send({ type: "bridge.error", message: "GPT-Live 连接失败，请检查 API key、模型权限和网络" }); client.close(); });
     upstream.on("close", () => {

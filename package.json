@@ -22,7 +22,8 @@
     "rive:girl:build": "bash scripts/build-girl.sh",
     "rive:girl:export": "bash scripts/rive-cli.sh rive-girl --once --rev=public/girl-expressive.rev",
     "rive:girl:studies": "node scripts/render-follow-studies.mjs --girl",
-    "live2d:setup": "node scripts/setup-live2d.mjs"
+    "live2d:setup": "node scripts/setup-live2d.mjs",
+    "speech-engine:voices": "node --env-file-if-exists=.env scripts/setup-engine-voices.mjs"
   },
   "keywords": [
     "avatar",

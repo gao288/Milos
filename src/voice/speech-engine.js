@@ -14,7 +14,7 @@ export class SpeechEngineOutput {
   }
   async connect() {
     const o = this.owner, generation = o.generation;
-    const response = await fetch("/api/voice/speech-engine", { method: "POST",
+    const response = await fetch("/api/voice/speech-engine" + (o.voice ? '?voice=' + encodeURIComponent(o.voice) : ''), { method: "POST",
       headers: { "X-Realpet-Token": o.config.token }, signal: AbortSignal.timeout(15000) });
     const data = await response.json();
     if (!response.ok) throw Error(data.error || "Speech Engine 连接失败");

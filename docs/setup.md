@@ -99,3 +99,34 @@ Speech Engine applies its default 300 ms playback buffer once per turn. GPT-Live
 - **Voice unavailable:** inspect server health/configuration and restart `voice:serve` after editing `.env`.
 - **No model mouth movement:** check the model service, downloaded checkpoint, and selected execution provider. Very quiet speech may be suppressed by silence gating.
 - **Speech Engine callback fails:** check that the tunnel is running, its current hostname matches `.env`, and setup has updated the saved resource.
+
+## Voice selection
+
+The voice panel offers four GPT-Live presets (Meridian, Vesper, Gleam, Willow),
+with male/female presentation labels. Selection is passed to `session.start`;
+GPT-Live fixes the voice at startup, so end the chat before changing it. Each
+provider's choice is remembered in this browser. `GPT_LIVE_VOICE` remains the
+server default, and an additional configured voice is preserved as an option.
+
+To add Chris, Brian, Sarah and Jessica buttons to Speech Engine after its initial
+setup, run:
+
+```sh
+npm run speech-engine:voices
+```
+
+This explicit provisioning command reuses the existing engine when its voice
+matches, creates separate configurations for the other presets, and saves their
+IDs in the ignored `.env` as `SPEECH_ENGINE_VOICE_IDS`. It copies the existing
+engine's callback, model, turn, audio and privacy settings. Restart the voice
+bridge afterward. Re-run it after changing the base engine's callback/settings
+to synchronize the variants. Ordinary voice selection does not update a shared
+remote engine: the backend issues a signed URL for the selected configuration.
+All variants use the same SDK-verified callback and text responder.
+
+Only provisioned Speech Engine presets appear in the UI; arbitrary voice or
+engine IDs from the browser are rejected. The experimental ElevenLabs revoicing
+mode continues to use `ELEVENLABS_VOICE_ID`.
+
+References: [GPT-Live voice options and startup limits](https://developers.openai.com/api/docs/guides/live-conversations),
+[ElevenLabs Speech Engine configuration](https://elevenlabs.io/docs/api-reference/speech-engine/create).

@@ -21,14 +21,19 @@ export class VoiceController {
     if (!response.ok) throw Error("请启动语音服务：npm run voice:serve");
     this.config = await response.json(); return this.config;
   }
-  async start({ bufferMs = 800, output = "live" } = {}) {
+  async start({ bufferMs = 800, output = "live", voice } = {}) {
     this.stop();
     this.avatar.stop();
     const generation = ++this.generation;
     this.active = true; this.onActive(true); this.onStatus("正在连接语音…");
     try {
+      // A voice change starts a new session. Wait for the previous provider's
+      // close acknowledgement before attempting to occupy its session slot.
+      await this.closing;
+      if (generation !== this.generation) return;
       if (!["live", "eleven", "engine"].includes(output)) throw Error("未知配音模式");
       this.output = output;
+      this.voice = voice;
       const config = await this.health();
       if (generation !== this.generation) return;
       if (!config.openaiConfigured) throw Error("请在本地 .env 配置 OPENAI_API_KEY 后重启语音服务");
@@ -58,7 +63,7 @@ export class VoiceController {
       this.sessionOrigin = context.currentTime; this.started = false; this.inputLevel = 0; this.speechMs = 0;
       this.emotionBusy = false; this.lastEmotionEnd = -1; this.lastEmotionAt = -Infinity;
       this.installMouth();
-      const connection = this.engine ? await this.engine.connect() : new WebSocket(`${location.protocol === "https:" ? "wss:" : "ws:"}//${location.host}/api/voice/live?token=${encodeURIComponent(config.token)}`);
+      const connection = this.engine ? await this.engine.connect() : new WebSocket(`${location.protocol === "https:" ? "wss:" : "ws:"}//${location.host}/api/voice/live?token=${encodeURIComponent(config.token)}${voice ? '&voice=' + encodeURIComponent(voice) : ''}`);
       if (generation !== this.generation) { connection?.close(); return; }
       this.socket = connection;
       const socket = this.socket;
@@ -282,13 +287,16 @@ export class VoiceController {
     const socket = this.socket; this.socket = null;
     if (socket) {
       socket.onmessage = socket.onerror = socket.onclose = null;
-      if (this.engine) socket.close();
-      else if (socket.readyState === WebSocket.OPEN) {
-        socket.send(JSON.stringify({ type: "session.close" }));
-        const timeout = setTimeout(() => socket.close(), 16000);
-        socket.onmessage = ({ data }) => { try { if (JSON.parse(data).type === "session.closed") { clearTimeout(timeout); socket.close(); } } catch {} };
-        socket.onclose = () => clearTimeout(timeout);
-      } else socket.close();
+      this.closing = new Promise(resolve => {
+        const timeout = setTimeout(() => { socket.close(); resolve(); }, 16000);
+        socket.onclose = () => { clearTimeout(timeout); resolve(); };
+        if (socket.readyState === WebSocket.CLOSED) { clearTimeout(timeout); resolve(); }
+        else if (this.engine || socket.readyState !== WebSocket.OPEN) socket.close();
+        else {
+          socket.send(JSON.stringify({ type: "session.close" }));
+          socket.onmessage = ({ data }) => { try { if (JSON.parse(data).type === "session.closed") socket.close(); } catch {} };
+        }
+      });
     }
     this.engine = null;
     this.media?.getTracks().forEach(t => t.stop()); this.media = null;

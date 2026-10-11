@@ -1,6 +1,7 @@
 import http from "node:http";
 import { ElevenLabsClient } from "@elevenlabs/elevenlabs-js";
 import OpenAI from "openai";
+import { engineVoices } from './voices.mjs';
 
 export const ENGINE_LLM = "gpt-5.6-luna";
 export const CALLBACK_PATH = "/speech-engine";
@@ -50,10 +51,14 @@ export function textResponder(openai, env = process.env) {
 export function createEngineService({ env = process.env, eleven, openai } = {}) {
   eleven ??= new ElevenLabsClient({ apiKey: env.ELEVENLABS_API_KEY });
   const configured = !!(env.SPEECH_ENGINE_ID && env.ELEVENLABS_API_KEY && env.OPENAI_API_KEY);
+  const voices = engineVoices(env);
   const service = { ready: false, configured, server: null,
-    async signedUrl() {
+    voices: voices.entries.map(({ engineId, voiceId, ...v }) => v), defaultVoice: voices.defaultId,
+    async signedUrl(voice = voices.defaultId) {
       if (!service.ready) throw Error("Speech Engine 回调尚未连接，请先完成本地配置");
-      const result = await eleven.conversationalAi.conversations.getSignedUrl({ agentId: env.SPEECH_ENGINE_ID });
+      const entry = voices.entries.find(v => v.id === voice);
+      if (!entry) throw Error('Invalid voice selection');
+      const result = await eleven.conversationalAi.conversations.getSignedUrl({ agentId: entry.engineId });
       return { signedUrl: result.signedUrl };
     },
     async start(port = Number(env.SPEECH_ENGINE_PORT || 8789)) {
