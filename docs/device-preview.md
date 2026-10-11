@@ -6,7 +6,7 @@ selects Follow V2 and disables pointer following so event poses remain readable.
 Use **Original preview** to return to the normal renderer, or choose another
 character to leave device mode.
 
-The preview samples the running Rive canvas at 1, 2, 4 or 8 FPS, scales a portrait
+The preview samples the running Rive canvas at 1, 2, 4, 8 or 30 FPS (default), scales a portrait
 crop into a 200, 320 or 480 pixel square, composites transparency on white, and
 thresholds luminance. Every output pixel is opaque black or white, including
 edges. The threshold slider trades fine detail against shadow removal. Browser

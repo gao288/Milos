@@ -21,7 +21,7 @@ export class OneBitDisplay {
     this.canvas.width = this.canvas.height = 320;
     this.context = this.canvas.getContext('2d', { willReadFrequently: true });
     this.clear();
-    this.fps = 4;
+    this.fps = 30;
     this.threshold = 160;
     this.next = 0;
     this.samples = 0;
@@ -44,7 +44,9 @@ export class OneBitDisplay {
     if (now < this.next) return;
     const source = this.source();
     if (!source?.width || !source?.height) return;
-    this.next = now + 1000 / this.fps;
+    const interval = 1000 / this.fps;
+    // Retain cadence when browser frames arrive slightly after a deadline.
+    this.next = now + interval - (this.next ? (now - this.next) % interval : 0);
     const c = this.context, n = this.canvas.width;
     c.fillStyle = '#fff'; c.fillRect(0, 0, n, n);
     const scale = Math.min(n / source.width, n / source.height) * this.zoom;

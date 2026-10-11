@@ -14,7 +14,7 @@ export class DevicePanel {
         <div id="device-controls" class="hidden">
           <div class="device-settings">
             <label>像素尺寸<select id="onebit-resolution"><option value="200">200 × 200</option><option value="320" selected>320 × 320</option><option value="480">480 × 480</option></select></label>
-            <label>预览刷新率<select id="onebit-fps"><option value="1">1 FPS</option><option value="2">2 FPS</option><option value="4" selected>4 FPS</option><option value="8">8 FPS</option></select></label>
+            <label>预览刷新率<select id="onebit-fps"><option value="1">1 FPS</option><option value="2">2 FPS</option><option value="4">4 FPS</option><option value="8">8 FPS</option><option value="30" selected>30 FPS</option></select></label>
             <label for="onebit-threshold">黑白阈值<input id="onebit-threshold" type="range" min="80" max="220" value="160"></label>
           </div>
           <p class="helper">浏览器模拟：仅黑白像素与刷新频率，不模拟真实墨水屏的残影、全刷或耗电。</p>
